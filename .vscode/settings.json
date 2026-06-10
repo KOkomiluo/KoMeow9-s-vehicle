@@ -1,0 +1,58 @@
+{
+  "java.configuration.updateBuildConfiguration": "automatic",
+  "java.compile.nullAnalysis.mode": "automatic",
+  "java.project.sourcePaths": [
+    "src/main/java",
+    "src/test/java"
+  ],
+  "java.project.referencedLibraries": [
+    "build/libs/**/*.jar"
+  ],
+  "java.configuration.runtimes": [
+    {
+      "name": "JavaSE-21",
+      "path": "${env:JAVA_HOME}",
+      "default": true
+    }
+  ],
+  "java.import.gradle.enabled": true,
+  "java.import.gradle.wrapper.enabled": true,
+  "java.import.gradle.version": "8.12",
+  "[java]": {
+    "editor.formatOnSave": true,
+    "editor.defaultFormatter": "redhat.java",
+    "editor.tabSize": 4,
+    "editor.insertSpaces": true
+  },
+  "[json]": {
+    "editor.tabSize": 2,
+    "editor.insertSpaces": true
+  },
+  "[toml]": {
+    "editor.tabSize": 4,
+    "editor.insertSpaces": true
+  },
+  "java.debug.settings.hotCodeReplace": "auto",
+  "java.saveActions.organizeImports": true,
+  "files.exclude": {
+    "**/.gradle": true,
+    "**/build": false,
+    "**/.idea": true,
+    "**/*.class": true
+  },
+  "files.watcherExclude": {
+    "**/.gradle/**": true,
+    "**/build/**": true,
+    "**/.git/objects/**": true
+  },
+  "search.exclude": {
+    "**/.gradle": true,
+    "**/build": true,
+    "**/bin": true,
+    "**/.neoform": true
+  },
+  "java.debug.settings.console": "integratedTerminal",
+  "java.test.config": {
+    "workingDirectory": "${workspaceFolder}"
+  }
+}

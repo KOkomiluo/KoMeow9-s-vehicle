@@ -1,0 +1,40 @@
+{
+  "id": "sports_car",
+  "displayName": "Sports Car",
+  "maxSpeed": 1.2,
+  "acceleration": 0.02,
+  "brakingPower": 0.05,
+  "handling": 1.2,
+  "fuelCapacity": 120.0,
+  "seatCount": 2,
+  "modelPath": "vehicle",
+  "texturePath": "sports_car",
+  "animationPath": "vehicle",
+  "weight": 1200.0,
+  "hornSound": "vehicleframework:horn.sports",
+
+  "_comment_obj": "OBJ 模型配置 — 设为空字符串则使用 GeckoLib 渲染",
+  "objModelPath": "models/obj/honda_civic.obj",
+  "objScale": 0.31,
+
+  "_comment_seats": "座位偏移位置（相对于车辆中心）",
+  "seats": [
+    { "index": 0, "isDriver": true,  "offset": [-0.4, 0.6, 0.0] },
+    { "index": 1, "isDriver": false, "offset": [ 0.4, 0.6, 0.0] }
+  ],
+
+  "_comment_collision": "碰撞箱定义",
+  "collisionBoxes": [
+    { "offset": [0.0, 0.5,  1.2], "size": [1.6, 0.8, 0.4] },
+    { "offset": [0.0, 0.5, -1.2], "size": [1.6, 0.8, 0.4] },
+    { "offset": [0.0, 0.5,  0.0], "size": [1.6, 0.8, 2.0] }
+  ],
+
+  "_comment_wheels": "轮子骨骼名称（用于动画绑定）",
+  "wheels": {
+    "frontLeft":  "wheel_fl",
+    "frontRight": "wheel_fr",
+    "rearLeft":   "wheel_rl",
+    "rearRight":  "wheel_rr"
+  }
+}

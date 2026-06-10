@@ -1,0 +1,16 @@
+{
+  "itemGroup.vehicleframework": "Vehicle Framework",
+  "entity.vehicleframework.vehicle": "Vehicle",
+  "entity.vehicleframework.vehicle_seat": "Vehicle Seat",
+  "item.vehicleframework.vehicle_key": "Vehicle Key",
+  "item.vehicleframework.vehicle_key.tooltip": "§7Right-click a vehicle to interact",
+  "item.vehicleframework.vehicle_spawn_item": "Vehicle Spawner",
+  "item.vehicleframework.vehicle_spawn_item.tooltip": "§bCreative tool - Right-click to spawn a vehicle",
+  "item.vehicleframework.fuel_bucket": "Fuel Bucket",
+  "vehicle.vehicleframework.sports_car": "Sports Car",
+  "message.vehicleframework.engine_start": "Engine started",
+  "message.vehicleframework.engine_stop": "Engine stopped",
+  "message.vehicleframework.locked": "Vehicle locked",
+  "message.vehicleframework.unlocked": "Vehicle unlocked",
+  "message.vehicleframework.no_fuel": "Out of fuel!"
+}

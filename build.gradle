@@ -1,0 +1,107 @@
+plugins {
+    id 'java'
+    id 'net.neoforged.moddev.legacyforge' version '2.0.91'
+}
+
+version = mod_version
+group = mod_group_id
+
+base {
+    archivesName = mod_id
+}
+
+java.toolchain.languageVersion = JavaLanguageVersion.of(java_version.toInteger())
+
+// ─── Legacy Forge (NeoForge 1.20.1) Configuration ────────────────────────────
+legacyForge {
+    // 版本格式：MC版本-Forge版本（NeoForge 1.20.1 基于 Forge 47.x）
+    version = project.minecraft_version + '-' + project.forge_version
+
+    parchment {
+        mappingsVersion = project.parchment_mappings_version
+        minecraftVersion = project.parchment_minecraft_version
+    }
+
+    runs {
+        client {
+            client()
+            systemProperty 'forge.enabledGameTestNamespaces', project.mod_id
+        }
+        server {
+            server()
+            programArgument '--nogui'
+            systemProperty 'forge.enabledGameTestNamespaces', project.mod_id
+        }
+        data {
+            data()
+            programArguments.addAll '--mod', project.mod_id, '--all',
+                    '--output', file('src/generated/resources/').getAbsolutePath(),
+                    '--existing', file('src/main/resources/').getAbsolutePath()
+        }
+
+        configureEach {
+            systemProperty 'forge.logging.markers', 'REGISTRIES'
+            logLevel = org.slf4j.event.Level.DEBUG
+        }
+    }
+
+    mods {
+        "${mod_id}" {
+            sourceSet(sourceSets.main)
+        }
+    }
+}
+
+// Include generated resources
+sourceSets.main.resources {
+    srcDir 'src/generated/resources'
+}
+
+// ─── Repositories ─────────────────────────────────────────────────────────────
+repositories {
+    maven {
+        name = 'AliyunMaven'
+        url = 'https://maven.aliyun.com/repository/public'
+    }
+    mavenLocal()
+    mavenCentral()
+    maven {
+        name = 'GeckoLib'
+        url = 'https://dl.cloudsmith.io/public/geckolib3/geckolib/maven/'
+        content {
+            includeGroup 'software.bernie.geckolib'
+        }
+    }
+}
+
+// ─── Dependencies ─────────────────────────────────────────────────────────────
+dependencies {
+    implementation "software.bernie.geckolib:geckolib-forge-${minecraft_version}:${geckolib_version}"
+}
+
+// ─── Misc ─────────────────────────────────────────────────────────────────────
+tasks.withType(ProcessResources).configureEach {
+    var replaceProperties = [
+            minecraft_version      : minecraft_version,
+            minecraft_version_range: minecraft_version_range,
+            forge_version          : forge_version,
+            forge_version_range    : forge_version_range,
+            loader_version_range   : loader_version_range,
+            mod_id                 : mod_id,
+            mod_name               : mod_name,
+            mod_license            : mod_license,
+            mod_version            : mod_version,
+            mod_authors            : mod_authors,
+            mod_description        : mod_description,
+            pack_format_number     : pack_format_number,
+            geckolib_version       : geckolib_version,
+    ]
+    inputs.properties replaceProperties
+    filesMatching(['META-INF/mods.toml', 'META-INF/neoforge.mods.toml', 'pack.mcmeta']) {
+        expand replaceProperties + [project: project]
+    }
+}
+
+configurations.all {
+    resolutionStrategy.cacheChangingModulesFor 0, 'seconds'
+}

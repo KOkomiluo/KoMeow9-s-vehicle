@@ -1,0 +1,16 @@
+{
+  "itemGroup.vehicleframework": "载具框架",
+  "entity.vehicleframework.vehicle": "载具",
+  "entity.vehicleframework.vehicle_seat": "载具座椅",
+  "item.vehicleframework.vehicle_key": "车钥匙",
+  "item.vehicleframework.vehicle_key.tooltip": "§7右键点击载具进行交互",
+  "item.vehicleframework.vehicle_spawn_item": "载具生成器",
+  "item.vehicleframework.vehicle_spawn_item.tooltip": "§b创造模式工具 - 右键生成载具",
+  "item.vehicleframework.fuel_bucket": "燃料桶",
+  "vehicle.vehicleframework.sports_car": "跑车",
+  "message.vehicleframework.engine_start": "引擎已启动",
+  "message.vehicleframework.engine_stop": "引擎已关闭",
+  "message.vehicleframework.locked": "载具已锁定",
+  "message.vehicleframework.unlocked": "载具已解锁",
+  "message.vehicleframework.no_fuel": "燃料耗尽！"
+}

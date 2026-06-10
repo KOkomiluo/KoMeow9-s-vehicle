@@ -1,0 +1,20 @@
+{
+  "format_version": "1.12.0",
+  "animations": {
+    "animation.vehicle.idle": {
+      "loop": true,
+      "animation_length": 2.0,
+      "bones": {}
+    },
+    "animation.vehicle.drive": {
+      "loop": true,
+      "animation_length": 1.0,
+      "bones": {
+        "wheel_fl": {"rotation": {"0.0": [0,0,0], "1.0": [360,0,0]}},
+        "wheel_fr": {"rotation": {"0.0": [0,0,0], "1.0": [360,0,0]}},
+        "wheel_rl": {"rotation": {"0.0": [0,0,0], "1.0": [360,0,0]}},
+        "wheel_rr": {"rotation": {"0.0": [0,0,0], "1.0": [360,0,0]}}
+      }
+    }
+  }
+}

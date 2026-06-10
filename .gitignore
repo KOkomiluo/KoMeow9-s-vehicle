@@ -1,0 +1,39 @@
+# Build outputs
+build/
+out/
+bin/
+
+# Gradle
+.gradle/
+gradle/wrapper/gradle-wrapper.jar
+
+# IDE
+.idea/
+*.iml
+*.ipr
+*.iws
+.project
+.classpath
+.settings/
+.factorypath
+
+# VS Code
+.vscode/.classpath
+.vscode/.project
+.vscode/.factorypath
+
+# OS
+.DS_Store
+Thumbs.db
+*.swp
+*.swo
+
+# Generated
+src/generated/
+
+# Runtime
+run/
+logs/
+
+# Compiled
+*.class

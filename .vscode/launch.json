@@ -1,0 +1,77 @@
+{
+  "version": "0.2.0",
+  "configurations": [
+    {
+      "type": "java",
+      "request": "launch",
+      "name": "Client",
+      "presentation": {
+        "group": "Mod Development - my-vehicle-framework",
+        "order": 0
+      },
+      "projectName": "my-vehicle-framework",
+      "mainClass": "net.neoforged.devlaunch.Main",
+      "args": [
+        "@D:\\fjcvvv\\MCmod_project\\my-vehicle-framework\\build\\moddev\\clientRunProgramArgs.txt"
+      ],
+      "vmArgs": [
+        "@D:\\fjcvvv\\MCmod_project\\my-vehicle-framework\\build\\moddev\\clientRunVmArgs.txt",
+        "-Dfml.modFolders\u003dvehicleframework%%D:\\fjcvvv\\MCmod_project\\my-vehicle-framework\\bin\\main"
+      ],
+      "cwd": "${workspaceFolder}\\run",
+      "env": {
+        "MOD_CLASSES": "vehicleframework%%D:\\fjcvvv\\MCmod_project\\my-vehicle-framework\\bin\\main"
+      },
+      "console": "internalConsole",
+      "shortenCommandLine": "none"
+    },
+    {
+      "type": "java",
+      "request": "launch",
+      "name": "Data",
+      "presentation": {
+        "group": "Mod Development - my-vehicle-framework",
+        "order": 1
+      },
+      "projectName": "my-vehicle-framework",
+      "mainClass": "net.neoforged.devlaunch.Main",
+      "args": [
+        "@D:\\fjcvvv\\MCmod_project\\my-vehicle-framework\\build\\moddev\\dataRunProgramArgs.txt"
+      ],
+      "vmArgs": [
+        "@D:\\fjcvvv\\MCmod_project\\my-vehicle-framework\\build\\moddev\\dataRunVmArgs.txt",
+        "-Dfml.modFolders\u003dvehicleframework%%D:\\fjcvvv\\MCmod_project\\my-vehicle-framework\\bin\\main"
+      ],
+      "cwd": "${workspaceFolder}\\run",
+      "env": {
+        "MOD_CLASSES": "vehicleframework%%D:\\fjcvvv\\MCmod_project\\my-vehicle-framework\\bin\\main"
+      },
+      "console": "internalConsole",
+      "shortenCommandLine": "none"
+    },
+    {
+      "type": "java",
+      "request": "launch",
+      "name": "Server",
+      "presentation": {
+        "group": "Mod Development - my-vehicle-framework",
+        "order": 2
+      },
+      "projectName": "my-vehicle-framework",
+      "mainClass": "net.neoforged.devlaunch.Main",
+      "args": [
+        "@D:\\fjcvvv\\MCmod_project\\my-vehicle-framework\\build\\moddev\\serverRunProgramArgs.txt"
+      ],
+      "vmArgs": [
+        "@D:\\fjcvvv\\MCmod_project\\my-vehicle-framework\\build\\moddev\\serverRunVmArgs.txt",
+        "-Dfml.modFolders\u003dvehicleframework%%D:\\fjcvvv\\MCmod_project\\my-vehicle-framework\\bin\\main"
+      ],
+      "cwd": "${workspaceFolder}\\run",
+      "env": {
+        "MOD_CLASSES": "vehicleframework%%D:\\fjcvvv\\MCmod_project\\my-vehicle-framework\\bin\\main"
+      },
+      "console": "internalConsole",
+      "shortenCommandLine": "none"
+    }
+  ]
+}
