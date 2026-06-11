@@ -51,6 +51,7 @@ public class VehicleEntity extends Entity implements GeoEntity, IVehicleDriveabl
     public VehicleEntity(EntityType<?> entityType, Level level) {
         super(entityType, level);
         this.blocksBuilding = true;
+        this.fuel = this.maxFuel;
     }
 
     @Override
@@ -64,7 +65,7 @@ public class VehicleEntity extends Entity implements GeoEntity, IVehicleDriveabl
     @Override
     protected void readAdditionalSaveData(CompoundTag tag) {
         this.speed = tag.getDouble("Speed");
-        this.fuel = tag.getDouble("Fuel");
+        this.fuel = tag.contains("Fuel") ? tag.getDouble("Fuel") : this.maxFuel;
         this.gear = tag.getInt("Gear");
         this.steeringAngle = tag.getDouble("SteeringAngle");
         String typeKey = tag.getString("VehicleType");
@@ -102,7 +103,7 @@ public class VehicleEntity extends Entity implements GeoEntity, IVehicleDriveabl
     @Override public double  getFuel()        { return fuel; }
     @Override public double  getMaxFuel()     { return maxFuel; }
     @Override public int     getGear()        { return gear; }
-    @Override public boolean isBeingDriven()  { return getControllingPassenger() instanceof Player; }
+    @Override public boolean isBeingDriven()  { return !getPassengers().isEmpty(); }
     @Override public void setAccelerating(boolean v) { this.accelerating = v; }
     @Override public void setBraking(boolean v)      { this.braking = v; }
     @Override public void setFuel(double f)           { this.fuel = Math.max(0, Math.min(f, maxFuel)); }
@@ -142,7 +143,7 @@ public class VehicleEntity extends Entity implements GeoEntity, IVehicleDriveabl
         return key != null && !key.isEmpty() ? key : "sports_car";
     }
 
-    @Override protected boolean canRide(Entity e) { return e instanceof Player; }
+    @Override protected boolean canRide(Entity e) { return false; }
 
     @Override
     public InteractionResult interact(Player player, InteractionHand hand) {
@@ -151,14 +152,10 @@ public class VehicleEntity extends Entity implements GeoEntity, IVehicleDriveabl
         if (!level().isClientSide) {
             // ── 拆卸扳手：将载具变回生成器掉落物 ──
             if (heldItem.getItem() instanceof VehicleDismantleItem) {
-                // 先驱逐所有乘客
                 ejectPassengers();
-                // 生成带有车型 NBT 的掉落物
                 ItemStack spawnStack = ModItemRegistry.createVehicleSpawnStack(getVehicleTypeKey());
                 this.spawnAtLocation(spawnStack);
-                // 移除载具实体
                 this.discard();
-                // 消耗扳手耐久
                 heldItem.hurtAndBreak(1, player, (p) -> {});
                 return InteractionResult.SUCCESS;
             }

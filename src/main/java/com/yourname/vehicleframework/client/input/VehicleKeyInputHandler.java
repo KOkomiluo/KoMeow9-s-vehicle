@@ -37,7 +37,7 @@ public final class VehicleKeyInputHandler {
         boolean left  = mc.options.keyLeft.isDown();
         boolean right = mc.options.keyRight.isDown();
 
-        if (accel != lastAccel || brake != lastBrake || left != lastLeft || right != lastRight) {
+        if (accel != lastAccel || brake != lastBrake || left != lastLeft || lastRight != right) {
             VehicleDrivingPacket.send(vehicle.getId(), accel, brake, left, right);
             lastAccel = accel; lastBrake = brake; lastLeft = left; lastRight = right;
         }
