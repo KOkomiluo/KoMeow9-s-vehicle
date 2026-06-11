@@ -20,9 +20,10 @@ public final class VehiclePhysicsEngine {
     private static final double ACCELERATION_FACTOR = 0.015;
     private static final double BRAKE_FACTOR        = 0.04;
     private static final double NATURAL_DECEL       = 0.995;
-    private static final double STEERING_SPEED      = 2.5;
-    private static final double MAX_STEERING_ANGLE  = 30.0;
-    private static final double SPEED_TO_YAW_FACTOR = 0.08;
+    private static final double STEERING_SPEED      = 3.0;
+    private static final double MAX_STEERING_ANGLE  = 35.0;
+    private static final double SPEED_TO_YAW_FACTOR = 0.25;
+    private static final double MIN_STEER_SPEED     = 0.15;
 
     public static void applyPhysics(VehicleEntity vehicle, Level level) {
         if (vehicle.getFuel() <= 0) {
@@ -67,11 +68,9 @@ public final class VehiclePhysicsEngine {
         }
         vehicle.setSteeringAngle(currentAngle);
 
-        double speed = Math.abs(vehicle.getSpeed());
-        if (speed > 0.01) {
-            double yawDelta = currentAngle * speed * SPEED_TO_YAW_FACTOR;
-            vehicle.setYRot(vehicle.getYRot() + (float) yawDelta);
-        }
+        double speed = Math.max(Math.abs(vehicle.getSpeed()), MIN_STEER_SPEED);
+        double yawDelta = currentAngle * speed * SPEED_TO_YAW_FACTOR;
+        vehicle.setYRot(vehicle.getYRot() + (float) yawDelta);
     }
 
     private static void applyNaturalDeceleration(VehicleEntity vehicle) {
