@@ -14,6 +14,7 @@ import net.minecraft.world.InteractionHand;
 import net.minecraft.world.InteractionResult;
 import net.minecraft.world.entity.Entity;
 import net.minecraft.world.entity.EntityType;
+import net.minecraft.world.entity.MoverType;
 import net.minecraft.world.entity.player.Player;
 import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.level.Level;
@@ -85,8 +86,20 @@ public class VehicleEntity extends Entity implements GeoEntity, IVehicleDriveabl
     public void tick() {
         super.tick();
         if (!level().isClientSide) {
-            if (isBeingDriven()) VehiclePhysicsEngine.applyPhysics(this, level());
-            else { speed *= 0.95; if (Math.abs(speed) < 0.001) speed = 0; }
+            // ── 重力（每 tick）──
+            if (!isNoGravity()) {
+                this.setDeltaMovement(this.getDeltaMovement().add(0.0, -0.08, 0.0));
+            }
+
+            if (isBeingDriven()) {
+                VehiclePhysicsEngine.applyPhysics(this, level());
+            } else {
+                speed *= 0.95;
+                if (Math.abs(speed) < 0.001) speed = 0;
+                // 未驾驶时也执行 move()，让重力生效
+                this.move(MoverType.SELF, this.getDeltaMovement());
+                this.setDeltaMovement(this.getDeltaMovement().multiply(0.5, 0.0, 0.5));
+            }
             entityData.set(DATA_SPEED, (float) speed);
             entityData.set(DATA_FUEL, (float) fuel);
             entityData.set(DATA_GEAR, gear);
