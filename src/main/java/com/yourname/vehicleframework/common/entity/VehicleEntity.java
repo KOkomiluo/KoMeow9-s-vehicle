@@ -1,16 +1,21 @@
 package com.yourname.vehicleframework.common.entity;
 
 import com.yourname.vehicleframework.api.IVehicleDriveable;
+import com.yourname.vehicleframework.common.item.VehicleDismantleItem;
 import com.yourname.vehicleframework.common.physics.VehiclePhysicsEngine;
+import com.yourname.vehicleframework.common.registry.ModItemRegistry;
 import com.yourname.vehicleframework.data.VehicleType;
 
 import net.minecraft.nbt.CompoundTag;
 import net.minecraft.network.syncher.EntityDataAccessor;
 import net.minecraft.network.syncher.EntityDataSerializers;
 import net.minecraft.network.syncher.SynchedEntityData;
+import net.minecraft.world.InteractionHand;
+import net.minecraft.world.InteractionResult;
 import net.minecraft.world.entity.Entity;
 import net.minecraft.world.entity.EntityType;
 import net.minecraft.world.entity.player.Player;
+import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.level.Level;
 
 import software.bernie.geckolib.animatable.GeoEntity;
@@ -131,9 +136,51 @@ public class VehicleEntity extends Entity implements GeoEntity, IVehicleDriveabl
 
     public VehicleType getVehicleTypeConfig() { return vehicleType; }
 
-    @Override protected boolean canRide(Entity e) { return false; }
-    @Override public boolean canBeCollidedWith()  { return true; }
+    /** 获取当前车辆配置的 key（用于 spawn item NBT）。 */
+    public String getVehicleTypeKey() {
+        String key = entityData.get(DATA_VEHICLE_TYPE);
+        return key != null && !key.isEmpty() ? key : "sports_car";
+    }
+
+    @Override protected boolean canRide(Entity e) { return e instanceof Player; }
+
+    @Override
+    public InteractionResult interact(Player player, InteractionHand hand) {
+        ItemStack heldItem = player.getItemInHand(hand);
+
+        if (!level().isClientSide) {
+            // ── 拆卸扳手：将载具变回生成器掉落物 ──
+            if (heldItem.getItem() instanceof VehicleDismantleItem) {
+                // 先驱逐所有乘客
+                ejectPassengers();
+                // 生成带有车型 NBT 的掉落物
+                ItemStack spawnStack = ModItemRegistry.createVehicleSpawnStack(getVehicleTypeKey());
+                this.spawnAtLocation(spawnStack);
+                // 移除载具实体
+                this.discard();
+                // 消耗扳手耐久
+                heldItem.hurtAndBreak(1, player, (p) -> {});
+                return InteractionResult.SUCCESS;
+            }
+
+            // ── 驾驶：右键骑乘 ──
+            if (getControllingPassenger() == null) {
+                player.startRiding(this);
+            } else if (!getPassengers().contains(player)) {
+                player.startRiding(this);
+            }
+        }
+        return InteractionResult.SUCCESS;
+    }
+
+    @Override
+    public boolean canBeCollidedWith()  { return true; }
     @Override public boolean isPickable()          { return true; }
+
+    @Override
+    protected boolean canAddPassenger(Entity passenger) {
+        return passenger instanceof Player && getPassengers().isEmpty();
+    }
 
     @Override
     public void registerControllers(AnimatableManager.ControllerRegistrar controllers) {
