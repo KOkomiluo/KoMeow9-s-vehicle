@@ -16,17 +16,17 @@
 
 | 组件        | 版本         |
 | ----------- | ------------ |
-| Minecraft   | 1.21.1       |
-| NeoForge    | 21.1.77      |
-| GeckoLib    | 4.7          |
-| Java        | 21           |
+| Minecraft   | 1.20.1       |
+| NeoForge    | 47.1.3       |
+| GeckoLib    | 4.4.9        |
+| Java        | 17           |
 | Gradle      | 8.12         |
 
 ## 🚀 快速开始
 
 ### 前置要求
 
-1. **JDK 21** — 推荐 [Eclipse Temurin](https://adoptium.net/)
+1. **JDK 17** — 推荐 [Eclipse Temurin](https://adoptium.net/)
 2. **VS Code** + Java Extension Pack（项目已推荐安装）
 
 ### 初始化 Gradle Wrapper
