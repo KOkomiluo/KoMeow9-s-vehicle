@@ -8,14 +8,15 @@
   "fuelCapacity": 120.0,
   "seatCount": 2,
   "modelPath": "vehicle",
-  "texturePath": "sports_car",
+  "texturePath": "civic2008",
   "animationPath": "vehicle",
   "weight": 1200.0,
   "hornSound": "vehicleframework:horn.sports",
 
-  "_comment_obj": "OBJ 模型配置 — 设为空字符串则使用 GeckoLib 渲染",
-  "objModelPath": "models/obj/honda_civic.obj",
-  "objScale": 0.31,
+  "_comment_obj": "OBJ 模型配置 — 设为空字符串则使用原版木船模型",
+  "_comment_obj2": "导入 Civic 2008 半成品模型",
+  "objModelPath": "models/obj/civic2008.obj",
+  "objScale": 0.5,
 
   "_comment_seats": "座位偏移位置（相对于车辆中心）",
   "seats": [

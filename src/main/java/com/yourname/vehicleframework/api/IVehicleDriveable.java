@@ -1,5 +1,7 @@
 package com.yourname.vehicleframework.api;
 
+import com.yourname.vehicleframework.common.physics.Wheel;
+
 import net.minecraft.world.entity.player.Player;
 
 /**
@@ -44,4 +46,24 @@ public interface IVehicleDriveable {
 
     /** 切换档位。 */
     void shiftGear(boolean up);
+
+    /** 直接设置档位（-1=R, 0=N, 1-6=前进挡）。 */
+    void setGear(int gear);
+
+    // ── 新增物理接口 ──
+
+    /** 手刹是否激活（漂移用）。 */
+    boolean isHandbrakeActive();
+
+    /** 设置手刹状态。 */
+    void setHandbrake(boolean active);
+
+    /** 获取四个车轮。 */
+    Wheel[] getWheels();
+
+    /** 获取当前发动机转速（RPM）。 */
+    double getEngineRPM();
+
+    /** 设置发动机转速。 */
+    void setEngineRPM(double rpm);
 }

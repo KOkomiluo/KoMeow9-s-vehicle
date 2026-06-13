@@ -2,6 +2,7 @@ package com.yourname.vehicleframework.data;
 
 import com.google.gson.Gson;
 import com.google.gson.GsonBuilder;
+import com.google.gson.JsonArray;
 import com.google.gson.JsonElement;
 
 import com.yourname.vehicleframework.VehicleFramework;
@@ -83,7 +84,17 @@ public final class VehicleConfigLoader {
                     getDoubleOrDefault(obj, "weight", 1500.0),
                     getOrDefault(obj, "hornSound", "vehicleframework:horn.default"),
                     getOrDefault(obj, "objModelPath", ""),
-                    getDoubleOrDefault(obj, "objScale", 0.0625)
+                    getDoubleOrDefault(obj, "objScale", 0.0625),
+                    // ── 新增物理配置字段 ──
+                    getDoubleArrayOrDefault(obj, "gearRatios", VehicleType.DEFAULT_GEAR_RATIOS),
+                    getDoubleOrDefault(obj, "finalDriveRatio", 3.5),
+                    getDoubleOrDefault(obj, "springStiffness", 50.0),
+                    getDoubleOrDefault(obj, "damperCoefficient", 8.0),
+                    getDoubleOrDefault(obj, "corneringStiffness", 4.0),
+                    getDoubleOrDefault(obj, "enginePeakTorque", 300.0),
+                    getDoubleOrDefault(obj, "enginePeakRPM", 4000.0),
+                    getDoubleOrDefault(obj, "transmissionEfficiency", 0.9),
+                    getOrDefault(obj, "driveType", "rwd")
             );
         } catch (Exception e) {
             LOGGER.error("Failed to parse vehicle type from: {}", id, e);
@@ -101,6 +112,21 @@ public final class VehicleConfigLoader {
 
     private static int getIntOrDefault(com.google.gson.JsonObject obj, String key, int def) {
         return obj.has(key) ? obj.get(key).getAsInt() : def;
+    }
+
+    private static double[] getDoubleArrayOrDefault(com.google.gson.JsonObject obj, String key, double[] def) {
+        if (!obj.has(key)) return def;
+        try {
+            JsonArray arr = obj.getAsJsonArray(key);
+            double[] result = new double[arr.size()];
+            for (int i = 0; i < arr.size(); i++) {
+                result[i] = arr.get(i).getAsDouble();
+            }
+            return result.length > 0 ? result : def;
+        } catch (Exception e) {
+            LOGGER.warn("Failed to parse '{}' as double array, using default", key);
+            return def;
+        }
     }
 
     public static VehicleType getConfig(String id) {

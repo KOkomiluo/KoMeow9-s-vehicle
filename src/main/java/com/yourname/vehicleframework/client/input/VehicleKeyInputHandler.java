@@ -17,7 +17,7 @@ public final class VehicleKeyInputHandler {
 
     private VehicleKeyInputHandler() {}
 
-    private static boolean lastAccel, lastBrake, lastLeft, lastRight;
+    private static boolean lastAccel, lastBrake, lastLeft, lastRight, lastHandbrake;
 
     @SubscribeEvent
     public static void onClientTick(final TickEvent.ClientTickEvent event) {
@@ -36,14 +36,21 @@ public final class VehicleKeyInputHandler {
         boolean brake = mc.options.keyDown.isDown();
         boolean left  = mc.options.keyLeft.isDown();
         boolean right = mc.options.keyRight.isDown();
+        boolean handbrake = mc.options.keyJump.isDown(); // 空格 = 手刹
 
-        if (accel != lastAccel || brake != lastBrake || left != lastLeft || lastRight != right) {
-            VehicleDrivingPacket.send(vehicle.getId(), accel, brake, left, right);
-            lastAccel = accel; lastBrake = brake; lastLeft = left; lastRight = right;
+        if (accel != lastAccel || brake != lastBrake
+                || left != lastLeft || right != lastRight
+                || handbrake != lastHandbrake) {
+            VehicleDrivingPacket.send(vehicle.getId(), accel, brake, left, right, handbrake);
+            lastAccel = accel;
+            lastBrake = brake;
+            lastLeft = left;
+            lastRight = right;
+            lastHandbrake = handbrake;
         }
     }
 
     private static void resetState() {
-        lastAccel = lastBrake = lastLeft = lastRight = false;
+        lastAccel = lastBrake = lastLeft = lastRight = lastHandbrake = false;
     }
 }

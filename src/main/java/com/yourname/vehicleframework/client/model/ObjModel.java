@@ -30,15 +30,27 @@ public class ObjModel {
     public float getMaxDimension() { return Math.max(getSizeX(), Math.max(getSizeY(), getSizeZ())); }
 
     /**
-     * 三角面片。每个面包含 3 个顶点。
+     * 三角面片。每个面包含 3 个顶点和可选的材质颜色。
      */
     public static class Face {
         public final Vertex v0, v1, v2;
+        /** 材质颜色 RGB（0~1），无材质时为 null。 */
+        public final float[] color;
 
         public Face(Vertex v0, Vertex v1, Vertex v2) {
+            this(v0, v1, v2, null);
+        }
+
+        public Face(Vertex v0, Vertex v1, Vertex v2, float[] color) {
             this.v0 = v0;
             this.v1 = v1;
             this.v2 = v2;
+            this.color = color;
+        }
+
+        /** 是否有有效的材质颜色。 */
+        public boolean hasColor() {
+            return color != null && color.length >= 3;
         }
     }
 
