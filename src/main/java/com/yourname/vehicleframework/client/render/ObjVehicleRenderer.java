@@ -5,8 +5,10 @@ import com.mojang.blaze3d.vertex.VertexConsumer;
 import com.mojang.math.Axis;
 
 import com.yourname.vehicleframework.VehicleFramework;
+import com.yourname.vehicleframework.client.model.ObjFace;
 import com.yourname.vehicleframework.client.model.ObjModel;
 import com.yourname.vehicleframework.client.model.ObjModelCache;
+import com.yourname.vehicleframework.client.model.ObjVertex;
 import com.yourname.vehicleframework.common.entity.VehicleEntity;
 import com.yourname.vehicleframework.data.VehicleType;
 
@@ -102,7 +104,7 @@ public class ObjVehicleRenderer extends EntityRenderer<VehicleEntity> {
         Matrix3f normalMatrix = poseStack.last().normal();
         int overlay = OverlayTexture.NO_OVERLAY;
 
-        for (ObjModel.Face face : model.getFaces()) {
+        for (ObjFace face : model.getFaces()) {
             float r, g, b;
             if (!hasUVs && face.hasColor()) {
                 // 无UV模式：用 MTL 材质颜色
@@ -119,14 +121,14 @@ public class ObjVehicleRenderer extends EntityRenderer<VehicleEntity> {
     /** 快速检测模型是否有任何有效的 UV 坐标。 */
     private static boolean modelHasUVs(ObjModel model) {
         if (model.getFaces().isEmpty()) return false;
-        ObjModel.Face first = model.getFaces().get(0);
+        ObjFace first = model.getFaces().get(0);
         // 如果 UV 是 (0,0) 且没有材质颜色，说明没有 UV
         return !(first.v0.u == 0 && first.v0.v == 0
                 && first.v1.u == 0 && first.v1.v == 0
                 && first.v2.u == 0 && first.v2.v == 0);
     }
 
-    private void renderFace(ObjModel.Face face, VertexConsumer consumer,
+    private void renderFace(ObjFace face, VertexConsumer consumer,
                             Matrix4f poseMatrix, Matrix3f normalMatrix,
                             int packedLight, int overlay, float r, float g, float b) {
         writeVertex(consumer, poseMatrix, normalMatrix, face.v0, packedLight, overlay, r, g, b);
@@ -135,7 +137,7 @@ public class ObjVehicleRenderer extends EntityRenderer<VehicleEntity> {
     }
 
     private void writeVertex(VertexConsumer consumer, Matrix4f poseMatrix, Matrix3f normalMatrix,
-                             ObjModel.Vertex vertex, int packedLight, int overlay,
+                             ObjVertex vertex, int packedLight, int overlay,
                              float r, float g, float b) {
         float x = vertex.px, y = vertex.py, z = vertex.pz;
         float tx = poseMatrix.m00() * x + poseMatrix.m01() * y + poseMatrix.m02() * z + poseMatrix.m03();

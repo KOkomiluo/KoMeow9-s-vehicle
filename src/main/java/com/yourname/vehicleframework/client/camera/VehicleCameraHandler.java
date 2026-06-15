@@ -72,12 +72,12 @@ public final class VehicleCameraHandler {
         double rx = offset.x * cos - offset.z * sin;
         double rz = offset.x * sin + offset.z * cos;
 
-        // 3. 设置玩家位置和朝向 → renderer 用 lerp(partialTick, xOld, getX()) 60fps 平滑
+        // 3. 设置玩家位置（60fps 平滑跟随）— 不锁定 yaw，让玩家自由环顾
         player.setPos(
                 vehicle.getX() + rx,
                 vehicle.getY() + offset.y,
                 vehicle.getZ() + rz);
-        player.setYRot(vehicle.getYRot());      // 摄像机方向跟随车辆 yaw
+        // 注意：不要 setYRot(vehicle.getYRot()) — 这会锁定摄像机视角，阻止自由环顾
     }
 
     public static void resetCamera() {}

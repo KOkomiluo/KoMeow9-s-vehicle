@@ -23,16 +23,7 @@ import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.level.Level;
 import net.minecraft.world.phys.Vec3;
 
-import software.bernie.geckolib.animatable.GeoEntity;
-import software.bernie.geckolib.core.animatable.instance.AnimatableInstanceCache;
-import software.bernie.geckolib.core.animation.AnimatableManager;
-import software.bernie.geckolib.core.animation.AnimationController;
-import software.bernie.geckolib.core.animation.AnimationState;
-import software.bernie.geckolib.core.object.PlayState;
-import software.bernie.geckolib.core.animation.RawAnimation;
-import software.bernie.geckolib.util.GeckoLibUtil;
-
-public class VehicleEntity extends Entity implements GeoEntity, IVehicleDriveable {
+public class VehicleEntity extends Entity implements IVehicleDriveable {
 
     private static final EntityDataAccessor<Float> DATA_SPEED =
             SynchedEntityData.defineId(VehicleEntity.class, EntityDataSerializers.FLOAT);
@@ -48,10 +39,6 @@ public class VehicleEntity extends Entity implements GeoEntity, IVehicleDriveabl
             SynchedEntityData.defineId(VehicleEntity.class, EntityDataSerializers.STRING);
     private static final EntityDataAccessor<Float> DATA_OBJ_SCALE =
             SynchedEntityData.defineId(VehicleEntity.class, EntityDataSerializers.FLOAT);
-
-    private final AnimatableInstanceCache animCache = GeckoLibUtil.createInstanceCache(this);
-    private static final RawAnimation DRIVE_ANIM = RawAnimation.begin().thenLoop("animation.vehicle.drive");
-    private static final RawAnimation IDLE_ANIM  = RawAnimation.begin().thenLoop("animation.vehicle.idle");
 
     private VehicleType vehicleType;
     private double speed, maxSpeed = 1.0, steeringAngle;
@@ -384,19 +371,4 @@ public class VehicleEntity extends Entity implements GeoEntity, IVehicleDriveabl
         // 车辆大小：宽 2.2 方块，高 1.5 方块
         return EntityDimensions.scalable(2.2f, 1.5f);
     }
-
-    // ── GeckoLib 动画 ──
-
-    @Override
-    public void registerControllers(AnimatableManager.ControllerRegistrar controllers) {
-        controllers.add(new AnimationController<>(this, "drive_controller", 2, this::drivePredicate));
-    }
-
-    private PlayState drivePredicate(AnimationState<VehicleEntity> state) {
-        state.setAnimation(Math.abs(speed) > 0.01 ? DRIVE_ANIM : IDLE_ANIM);
-        return PlayState.CONTINUE;
-    }
-
-    @Override
-    public AnimatableInstanceCache getAnimatableInstanceCache() { return animCache; }
 }

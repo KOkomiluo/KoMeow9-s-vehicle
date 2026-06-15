@@ -1,7 +1,7 @@
 package com.yourname.vehicleframework.client;
 
 import com.yourname.vehicleframework.VehicleFramework;
-import com.yourname.vehicleframework.client.render.SmartVehicleRenderer;
+import com.yourname.vehicleframework.client.render.VehicleRenderer;
 import com.yourname.vehicleframework.common.registry.ModEntityRegistry;
 
 import net.minecraftforge.client.event.EntityRenderersEvent;
@@ -21,6 +21,6 @@ public class VehicleFrameworkClient {
 
     private static void onRegisterRenderers(final EntityRenderersEvent.RegisterRenderers event) {
         // 智能渲染器：有 objModelPath 时用 OBJ，否则用 GeckoLib 骨骼动画
-        event.registerEntityRenderer(ModEntityRegistry.VEHICLE.get(), SmartVehicleRenderer::new);
+        event.registerEntityRenderer(ModEntityRegistry.VEHICLE.get(), VehicleRenderer::new);
     }
 }

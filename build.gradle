@@ -65,18 +65,11 @@ repositories {
     }
     mavenLocal()
     mavenCentral()
-    maven {
-        name = 'GeckoLib'
-        url = 'https://dl.cloudsmith.io/public/geckolib3/geckolib/maven/'
-        content {
-            includeGroup 'software.bernie.geckolib'
-        }
-    }
 }
 
 // ─── Dependencies ─────────────────────────────────────────────────────────────
 dependencies {
-    implementation "software.bernie.geckolib:geckolib-forge-${minecraft_version}:${geckolib_version}"
+    // OBJ 模型直接用 SmartVehicleRenderer，无需 GeckoLib
 }
 
 // ─── Misc ─────────────────────────────────────────────────────────────────────
@@ -94,7 +87,6 @@ tasks.withType(ProcessResources).configureEach {
             mod_authors            : mod_authors,
             mod_description        : mod_description,
             pack_format_number     : pack_format_number,
-            geckolib_version       : geckolib_version,
     ]
     inputs.properties replaceProperties
     filesMatching(['META-INF/mods.toml', 'META-INF/neoforge.mods.toml', 'pack.mcmeta']) {
