@@ -94,7 +94,16 @@ public final class VehicleConfigLoader {
                     getDoubleOrDefault(obj, "enginePeakTorque", 300.0),
                     getDoubleOrDefault(obj, "enginePeakRPM", 4000.0),
                     getDoubleOrDefault(obj, "transmissionEfficiency", 0.9),
-                    getOrDefault(obj, "driveType", "rwd")
+                    getOrDefault(obj, "driveType", "rwd"),
+                    // ── P0-P2 新增物理参数 ──
+                    getDoubleOrDefault(obj, "tirePeakFriction", 1.0),
+                    getDoubleOrDefault(obj, "tireSlidingFriction", 0.7),
+                    getDoubleOrDefault(obj, "tirePeakSlipRatio", 0.12),
+                    getDoubleOrDefault(obj, "tireLateralStiffness", 10.0),
+                    getDoubleOrDefault(obj, "cogHeight", 0.5),
+                    getDoubleOrDefault(obj, "weightDistribution", 0.5),
+                    getDoubleOrDefault(obj, "engineInertia", 0.15),
+                    getDoubleOrDefault(obj, "engineBrakingTorque", 50.0)
             );
         } catch (Exception e) {
             LOGGER.error("Failed to parse vehicle type from: {}", id, e);

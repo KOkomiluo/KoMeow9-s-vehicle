@@ -8,6 +8,7 @@ import com.yourname.vehicleframework.VehicleFramework;
 import com.yourname.vehicleframework.client.model.ObjFace;
 import com.yourname.vehicleframework.client.model.ObjModel;
 import com.yourname.vehicleframework.client.model.ObjModelCache;
+import com.yourname.vehicleframework.client.model.ObjModelGroup;
 import com.yourname.vehicleframework.client.model.ObjVertex;
 import com.yourname.vehicleframework.common.entity.VehicleEntity;
 import com.yourname.vehicleframework.data.VehicleType;
@@ -30,6 +31,8 @@ import org.joml.Matrix4f;
  *   <li><b>有 UV 坐标</b>：使用配置的贴图 + 标准纹理渲染</li>
  *   <li><b>无 UV 坐标</b>：使用 MTL 材质颜色渲染（无贴图，纯色面片）</li>
  * </ul>
+ * <p>
+ * 按命名子对象独立渲染（仿 MTS RenderableModelObject），为动画预留扩展点。
  */
 public class ObjVehicleRenderer extends EntityRenderer<VehicleEntity> {
 
@@ -64,11 +67,11 @@ public class ObjVehicleRenderer extends EntityRenderer<VehicleEntity> {
         }
         if (objPath == null || objPath.isEmpty()) return;
 
-        ObjModel model = ObjModelCache.get(objPath);
-        if (model == null || model.getFaces().isEmpty()) return;
+        ObjModelGroup modelGroup = ObjModelCache.get(objPath);
+        if (modelGroup == null || modelGroup.getObjects().isEmpty()) return;
 
-        // 检测是否有 UV 坐标
-        boolean hasUVs = modelHasUVs(model);
+        // 检测是否有 UV 坐标（遍历所有子对象中第一个面片）
+        boolean hasUVs = modelGroupHasUVs(modelGroup);
 
         poseStack.pushPose();
 
@@ -83,10 +86,10 @@ public class ObjVehicleRenderer extends EntityRenderer<VehicleEntity> {
         if (scale <= 0) scale = DEFAULT_SCALE;
         poseStack.scale(scale, scale, scale);
 
-        // 居中模型
-        float centerX = (model.getBoundsMin()[0] + model.getBoundsMax()[0]) / 2.0f;
-        float centerY = model.getBoundsMin()[1];
-        float centerZ = (model.getBoundsMin()[2] + model.getBoundsMax()[2]) / 2.0f;
+        // 居中模型（使用合并包围盒）
+        float centerX = (modelGroup.getBoundsMin()[0] + modelGroup.getBoundsMax()[0]) / 2.0f;
+        float centerY = modelGroup.getBoundsMin()[1];
+        float centerZ = (modelGroup.getBoundsMin()[2] + modelGroup.getBoundsMax()[2]) / 2.0f;
         poseStack.translate(-centerX, -centerY, -centerZ);
 
         // ── 渲染 ──
@@ -104,28 +107,36 @@ public class ObjVehicleRenderer extends EntityRenderer<VehicleEntity> {
         Matrix3f normalMatrix = poseStack.last().normal();
         int overlay = OverlayTexture.NO_OVERLAY;
 
-        for (ObjFace face : model.getFaces()) {
-            float r, g, b;
-            if (!hasUVs && face.hasColor()) {
-                // 无UV模式：用 MTL 材质颜色
-                r = face.color[0]; g = face.color[1]; b = face.color[2];
-            } else {
-                r = g = b = 1.0f; // 有UV模式：白色（贴图自带颜色）
+        // 遍历所有命名子对象独立渲染
+        for (ObjModel subObject : modelGroup.getObjects().values()) {
+            for (ObjFace face : subObject.getFaces()) {
+                float r, g, b;
+                if (!hasUVs && face.hasColor()) {
+                    r = face.color[0]; g = face.color[1]; b = face.color[2];
+                } else {
+                    r = g = b = 1.0f;
+                }
+                renderFace(face, vertexConsumer, poseMatrix, normalMatrix,
+                        packedLight, overlay, r, g, b);
             }
-            renderFace(face, vertexConsumer, poseMatrix, normalMatrix, packedLight, overlay, r, g, b);
         }
 
         poseStack.popPose();
     }
 
-    /** 快速检测模型是否有任何有效的 UV 坐标。 */
-    private static boolean modelHasUVs(ObjModel model) {
-        if (model.getFaces().isEmpty()) return false;
-        ObjFace first = model.getFaces().get(0);
-        // 如果 UV 是 (0,0) 且没有材质颜色，说明没有 UV
-        return !(first.v0.u == 0 && first.v0.v == 0
-                && first.v1.u == 0 && first.v1.v == 0
-                && first.v2.u == 0 && first.v2.v == 0);
+    /** 快速检测模型组中是否有任何有效的 UV 坐标。 */
+    private static boolean modelGroupHasUVs(ObjModelGroup group) {
+        for (ObjModel obj : group.getObjects().values()) {
+            if (obj.getFaces().isEmpty()) continue;
+            ObjFace first = obj.getFaces().get(0);
+            // 如果 UV 是 (0,0) 且没有材质颜色，说明没有 UV
+            if (first.v0.u != 0 || first.v0.v != 0
+                    || first.v1.u != 0 || first.v1.v != 0
+                    || first.v2.u != 0 || first.v2.v != 0) {
+                return true;
+            }
+        }
+        return false;
     }
 
     private void renderFace(ObjFace face, VertexConsumer consumer,
@@ -133,6 +144,9 @@ public class ObjVehicleRenderer extends EntityRenderer<VehicleEntity> {
                             int packedLight, int overlay, float r, float g, float b) {
         writeVertex(consumer, poseMatrix, normalMatrix, face.v0, packedLight, overlay, r, g, b);
         writeVertex(consumer, poseMatrix, normalMatrix, face.v1, packedLight, overlay, r, g, b);
+        writeVertex(consumer, poseMatrix, normalMatrix, face.v2, packedLight, overlay, r, g, b);
+        // Entity RenderTypes consume QUADS. Use a degenerate fourth vertex for
+        // each OBJ triangle instead of leaking into the following face.
         writeVertex(consumer, poseMatrix, normalMatrix, face.v2, packedLight, overlay, r, g, b);
     }
 

@@ -51,6 +51,22 @@ public class Wheel {
     /** 当前转向偏角（仅前轮有效，度数）。 */
     public double steerAngle;
 
+    // ── 轮胎物理状态（P0 摩擦圆模型）──
+    /** 当前纵向滑移率 σ = (ωr - vx) / max(|ωr|, |vx|)。0=纯滚动，+1=完全空转，-1=完全锁死。 */
+    public double slipRatio;
+    /** 当前侧滑角 α（弧度）。0=无侧滑，越大横向力越大。 */
+    public double slipAngle;
+    /** 当前轮胎法向载荷 Fz（N，经重心转移调整后）。 */
+    public double normalLoad;
+    /** 当前 tick 产生的纵向力 Fx（N，正值=驱动，负值=制动）。 */
+    public double longitudinalForce;
+    /** 当前 tick 产生的横向力 Fy（N）。 */
+    public double lateralForce;
+    /** 车轮表面线速度（m/s 或 blocks/tick 等效），持久跨 tick。 */
+    public double wheelRotationSpeed;
+    /** 上一 tick 的轮速（用于计算轮加速度）。 */
+    public double prevWheelRotationSpeed;
+
     public Wheel(Vec3 localPos, boolean isFront, boolean isLeft, double radius) {
         this.localPos = localPos;
         this.isFront = isFront;
@@ -63,6 +79,13 @@ public class Wheel {
         this.groundNormal = new Vec3(0, 1, 0);
         this.wheelAngularVelocity = 0;
         this.steerAngle = 0;
+        this.slipRatio = 0;
+        this.slipAngle = 0;
+        this.normalLoad = 0;
+        this.longitudinalForce = 0;
+        this.lateralForce = 0;
+        this.wheelRotationSpeed = 0;
+        this.prevWheelRotationSpeed = 0;
     }
 
     /** 获取当前悬挂压缩速度（方块/tick，正值=正在压缩）。 */
@@ -77,9 +100,27 @@ public class Wheel {
                         / (MAX_SUSPENSION_LENGTH - MIN_SUSPENSION_LENGTH)));
     }
 
-    /** 推进悬挂状态到下一 tick。 */
+    /** 推进悬挂状态和轮速到下一 tick。 */
     public void advanceState() {
         this.prevSuspensionLength = this.suspensionLength;
+        this.prevWheelRotationSpeed = this.wheelRotationSpeed;
+    }
+
+    /**
+     * 将世界速度分解为车轮局部坐标系下的前向/侧向分量。
+     *
+     * @param worldVelocity 车辆世界速度
+     * @param vehicleYawRad 车辆朝向（弧度）
+     * @return [forwardSpeed, lateralSpeed] — 前向为正=前进，侧向为正=右侧
+     */
+    public double[] getLocalVelocity(Vec3 worldVelocity, float vehicleYawRad) {
+        // 车轮方向 = 车辆朝向 + 转向偏角（仅前轮转向）
+        double wheelYaw = vehicleYawRad + Math.toRadians(this.steerAngle);
+        double cos = Math.cos(wheelYaw);
+        double sin = Math.sin(wheelYaw);
+        double forwardSpeed =  worldVelocity.x * (-sin) + worldVelocity.z * cos;
+        double lateralSpeed = worldVelocity.x * cos + worldVelocity.z * sin;
+        return new double[]{forwardSpeed, lateralSpeed};
     }
 
     /** 设置着地状态。 */

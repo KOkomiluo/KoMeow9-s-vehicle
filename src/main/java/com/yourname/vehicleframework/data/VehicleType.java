@@ -23,6 +23,14 @@ package com.yourname.vehicleframework.data;
  *   <li>enginePeakRPM — 峰值扭矩转速</li>
  *   <li>transmissionEfficiency — 传动效率 η (0~1)</li>
  *   <li>driveType — 驱动方式 "rwd"/"fwd"/"awd"</li>
+ *   <li>tirePeakFriction — 轮胎峰值摩擦系数 μ_peak（默认 1.0）</li>
+ *   <li>tireSlidingFriction — 完全滑动摩擦系数 μ_slide（默认 0.7）</li>
+ *   <li>tirePeakSlipRatio — 峰值滑移率（默认 0.12）</li>
+ *   <li>tireLateralStiffness — 侧向刚度 B 因子（默认 10.0）</li>
+ *   <li>cogHeight — 重心高度（方块，默认 0.5）</li>
+ *   <li>weightDistribution — 前轴重量分配比 0~1（默认 0.5）</li>
+ *   <li>engineInertia — 引擎旋转惯性 J（默认 0.15）</li>
+ *   <li>engineBrakingTorque — 发动机制动扭矩（默认 50.0）</li>
  * </ul>
  */
 public record VehicleType(
@@ -41,7 +49,7 @@ public record VehicleType(
         String hornSound,
         String objModelPath,
         double objScale,
-        // ── 新增物理配置字段 ──
+        // ── 已有物理配置字段 ──
         double[] gearRatios,
         double finalDriveRatio,
         double springStiffness,
@@ -50,7 +58,16 @@ public record VehicleType(
         double enginePeakTorque,
         double enginePeakRPM,
         double transmissionEfficiency,
-        String driveType
+        String driveType,
+        // ── P0-P2 新增轮胎/重心/引擎物理参数 ──
+        double tirePeakFriction,
+        double tireSlidingFriction,
+        double tirePeakSlipRatio,
+        double tireLateralStiffness,
+        double cogHeight,
+        double weightDistribution,
+        double engineInertia,
+        double engineBrakingTorque
 ) {
     /** 默认挡位传动比：R, N, 1, 2, 3, 4, 5, 6 */
     public static final double[] DEFAULT_GEAR_RATIOS = {
@@ -73,7 +90,16 @@ public record VehicleType(
             1500.0, "vehicleframework:horn.default",
             "", 0.0625,
             DEFAULT_GEAR_RATIOS, 3.5, 50.0, 8.0,
-            4.0, 300.0, 4000.0, 0.9, "rwd"
+            4.0, 300.0, 4000.0, 0.9, "rwd",
+            // ── P0-P2 新参数默认值 ──
+            1.0,   // tirePeakFriction
+            0.7,   // tireSlidingFriction
+            0.12,  // tirePeakSlipRatio
+            10.0,  // tireLateralStiffness
+            0.5,   // cogHeight
+            0.5,   // weightDistribution
+            0.15,  // engineInertia
+            50.0   // engineBrakingTorque
     );
 
     /** 是否使用 OBJ 模型渲染（而非 GeckoLib）。 */
