@@ -18,6 +18,16 @@
   "objModelPath": "models/obj/civic2008.obj",
   "objScale": 0.5,
 
+  "wheelBase": 3.2,
+  "trackWidth": 2.0,
+  "yawInertia": 2.6,
+  "aerodynamicDrag": 0.006,
+  "rollingResistance": 0.0015,
+  "maxSteeringAngle": 35.0,
+  "inputResponse": 0.18,
+  "bodyPitchStrength": 85.0,
+  "bodyRollStrength": 110.0,
+
   "_comment_seats": "座位偏移位置（相对于车辆中心）",
   "seats": [
     { "index": 0, "isDriver": true,  "offset": [-0.4, 0.6, 0.0] },

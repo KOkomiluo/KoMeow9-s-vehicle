@@ -76,7 +76,10 @@ public class ObjVehicleRenderer extends EntityRenderer<VehicleEntity> {
         poseStack.pushPose();
 
         // ── 变换 ──
-        poseStack.mulPose(Axis.YP.rotationDegrees(180.0f - entityYaw));
+        float visualYaw = entity.getVisualYaw(partialTick);
+        poseStack.mulPose(Axis.YP.rotationDegrees(180.0f - visualYaw));
+        poseStack.mulPose(Axis.ZP.rotationDegrees(entity.getVisualBodyRoll(partialTick)));
+        poseStack.mulPose(Axis.XP.rotationDegrees(entity.getVisualBodyPitch(partialTick)));
 
         float scale = entity.getSyncedObjScale();
         if (scale <= 0) {

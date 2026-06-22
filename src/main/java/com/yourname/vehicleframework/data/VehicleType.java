@@ -67,7 +67,17 @@ public record VehicleType(
         double cogHeight,
         double weightDistribution,
         double engineInertia,
-        double engineBrakingTorque
+        double engineBrakingTorque,
+        // Simcade chassis and control tuning
+        double wheelBase,
+        double trackWidth,
+        double yawInertia,
+        double aerodynamicDrag,
+        double rollingResistance,
+        double maxSteeringAngle,
+        double inputResponse,
+        double bodyPitchStrength,
+        double bodyRollStrength
 ) {
     /** 默认挡位传动比：R, N, 1, 2, 3, 4, 5, 6 */
     public static final double[] DEFAULT_GEAR_RATIOS = {
@@ -99,7 +109,16 @@ public record VehicleType(
             0.5,   // cogHeight
             0.5,   // weightDistribution
             0.15,  // engineInertia
-            50.0   // engineBrakingTorque
+            50.0,  // engineBrakingTorque
+            3.2,   // wheelBase
+            2.0,   // trackWidth
+            2.6,   // yawInertia
+            0.006, // aerodynamicDrag
+            0.0015,// rollingResistance
+            35.0,  // maxSteeringAngle
+            0.18,  // inputResponse
+            85.0,  // bodyPitchStrength
+            110.0  // bodyRollStrength
     );
 
     /** 是否使用 OBJ 模型渲染（而非 GeckoLib）。 */
@@ -159,5 +178,25 @@ public record VehicleType(
             case "awd" -> true;
             default -> !isFront; // rwd
         };
+    }
+
+    public double getEffectiveWheelBase() {
+        return wheelBase > 0.5 ? wheelBase : 3.2;
+    }
+
+    public double getEffectiveTrackWidth() {
+        return trackWidth > 0.5 ? trackWidth : 2.0;
+    }
+
+    public double getEffectiveYawInertia() {
+        return yawInertia > 0.1 ? yawInertia : 2.6;
+    }
+
+    public double getEffectiveMaxSteeringAngle() {
+        return maxSteeringAngle > 1.0 ? maxSteeringAngle : 35.0;
+    }
+
+    public double getEffectiveInputResponse() {
+        return inputResponse > 0 && inputResponse <= 1.0 ? inputResponse : 0.18;
     }
 }

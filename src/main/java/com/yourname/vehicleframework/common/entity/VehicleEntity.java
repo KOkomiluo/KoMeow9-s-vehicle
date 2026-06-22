@@ -11,6 +11,7 @@ import net.minecraft.nbt.CompoundTag;
 import net.minecraft.network.syncher.EntityDataAccessor;
 import net.minecraft.network.syncher.EntityDataSerializers;
 import net.minecraft.network.syncher.SynchedEntityData;
+import net.minecraft.util.Mth;
 import net.minecraft.world.InteractionHand;
 import net.minecraft.world.InteractionResult;
 import net.minecraft.world.entity.Entity;
@@ -39,6 +40,12 @@ public class VehicleEntity extends Entity implements IVehicleDriveable {
             SynchedEntityData.defineId(VehicleEntity.class, EntityDataSerializers.STRING);
     private static final EntityDataAccessor<Float> DATA_OBJ_SCALE =
             SynchedEntityData.defineId(VehicleEntity.class, EntityDataSerializers.FLOAT);
+    private static final EntityDataAccessor<Float> DATA_BODY_PITCH =
+            SynchedEntityData.defineId(VehicleEntity.class, EntityDataSerializers.FLOAT);
+    private static final EntityDataAccessor<Float> DATA_BODY_ROLL =
+            SynchedEntityData.defineId(VehicleEntity.class, EntityDataSerializers.FLOAT);
+    private static final EntityDataAccessor<Float> DATA_STEERING_ANGLE =
+            SynchedEntityData.defineId(VehicleEntity.class, EntityDataSerializers.FLOAT);
 
     private VehicleType vehicleType;
     private double speed, maxSpeed = 1.0, steeringAngle;
@@ -51,18 +58,28 @@ public class VehicleEntity extends Entity implements IVehicleDriveable {
     private double engineRPM;
     private int absTimer;
     private boolean wheelsInitialized;
+    private double yawRate;
+    private double throttleInput, brakeInput, steeringInput;
+    private double rearGripFactor = 1.0;
+    private double bodyPitch, bodyRoll;
+    private double bodyPitchVelocity, bodyRollVelocity;
+    private float clientBodyPitch, clientBodyRoll;
+    private float clientBodyPitchOld, clientBodyRollOld;
+    private float clientVisualYaw, clientVisualYawOld, clientVisualYawTarget;
+    private float clientVisualYawVelocity;
+    private boolean clientVisualYawInitialized;
 
     // ── 客户端 60fps 插值暂存（baseTick 之后应用）──
     /** 暂存的服务端目标位置 — baseTick() 运行后再应用到 setPos */
     private double clientTargetX, clientTargetY, clientTargetZ;
-    private float clientTargetYRot, clientTargetXRot;
+    private float clientTargetXRot;
+    private boolean clientVisualYawResetPending;
     private boolean hasClientTarget;
 
     /** 由 VehicleCameraHandler 在 Phase.END 调用 */
     public void applyClientTarget() {
         if (!hasClientTarget) return;
         this.setPos(clientTargetX, clientTargetY, clientTargetZ);
-        this.setYRot(clientTargetYRot);
         this.setXRot(clientTargetXRot);
         this.hasClientTarget = false;
     }
@@ -86,6 +103,9 @@ public class VehicleEntity extends Entity implements IVehicleDriveable {
         this.entityData.define(DATA_ENGINE_RPM, 800.0f);
         this.entityData.define(DATA_OBJ_PATH, "");
         this.entityData.define(DATA_OBJ_SCALE, 0.0625f);
+        this.entityData.define(DATA_BODY_PITCH, 0.0f);
+        this.entityData.define(DATA_BODY_ROLL, 0.0f);
+        this.entityData.define(DATA_STEERING_ANGLE, 0.0f);
     }
 
     // ── 车轮初始化 ──
@@ -95,8 +115,9 @@ public class VehicleEntity extends Entity implements IVehicleDriveable {
         // 默认车轮位置（适用于约 2.0×4.0 的车辆）
         // localPos: (+X=右侧, +Z=前方, Y=垂直偏移)
         double wheelY = 0.35;
-        double wheelZ = 1.6;
-        double wheelX = 1.0;
+        VehicleType type = vehicleType != null ? vehicleType : VehicleType.DEFAULT;
+        double wheelZ = type.getEffectiveWheelBase() * 0.5;
+        double wheelX = type.getEffectiveTrackWidth() * 0.5;
         double wheelRadius = 0.4;
 
         this.wheels = new Wheel[4];
@@ -121,6 +142,9 @@ public class VehicleEntity extends Entity implements IVehicleDriveable {
         this.gear = tag.contains("Gear") ? tag.getInt("Gear") : 1;
         this.steeringAngle = tag.getDouble("SteeringAngle");
         this.engineRPM = tag.contains("EngineRPM") ? tag.getDouble("EngineRPM") : 800;
+        this.yawRate = tag.getDouble("YawRate");
+        this.bodyPitch = tag.getDouble("BodyPitch");
+        this.bodyRoll = tag.getDouble("BodyRoll");
         if (tag.contains("ObjPath")) entityData.set(DATA_OBJ_PATH, tag.getString("ObjPath"));
         if (tag.contains("ObjScale")) entityData.set(DATA_OBJ_SCALE, tag.getFloat("ObjScale"));
         String typeKey = tag.getString("VehicleType");
@@ -134,6 +158,9 @@ public class VehicleEntity extends Entity implements IVehicleDriveable {
         tag.putInt("Gear", gear);
         tag.putDouble("SteeringAngle", steeringAngle);
         tag.putDouble("EngineRPM", engineRPM);
+        tag.putDouble("YawRate", yawRate);
+        tag.putDouble("BodyPitch", bodyPitch);
+        tag.putDouble("BodyRoll", bodyRoll);
         tag.putString("ObjPath", entityData.get(DATA_OBJ_PATH));
         tag.putFloat("ObjScale", entityData.get(DATA_OBJ_SCALE));
         tag.putString("VehicleType", entityData.get(DATA_VEHICLE_TYPE));
@@ -150,7 +177,9 @@ public class VehicleEntity extends Entity implements IVehicleDriveable {
             initWheels();
         }
 
-        if (!level().isClientSide) {
+        if (level().isClientSide) {
+            updateClientVisualState();
+        } else {
             // ── 重力（每 tick）──
             if (!isNoGravity()) {
                 this.setDeltaMovement(this.getDeltaMovement().add(0.0, -0.08, 0.0));
@@ -162,6 +191,16 @@ public class VehicleEntity extends Entity implements IVehicleDriveable {
                 // 无人驾驶：自然减速 + 受重力下落
                 speed *= 0.95;
                 if (Math.abs(speed) < 0.001) speed = 0;
+                throttleInput = moveToward(throttleInput, 0.0, 0.2);
+                brakeInput = moveToward(brakeInput, 0.0, 0.2);
+                steeringInput = moveToward(steeringInput, 0.0, 0.2);
+                steeringAngle = moveToward(steeringAngle, 0.0, 5.0);
+                yawRate *= 0.8;
+                bodyPitchVelocity = (bodyPitchVelocity - bodyPitch * 0.18) * 0.68;
+                bodyRollVelocity = (bodyRollVelocity - bodyRoll * 0.20) * 0.66;
+                setBodyPitch(bodyPitch + bodyPitchVelocity);
+                setBodyRoll(bodyRoll + bodyRollVelocity);
+                setMaxUpStep(0.25f);
                 this.move(MoverType.SELF, this.getDeltaMovement());
                 this.setDeltaMovement(this.getDeltaMovement().multiply(0.5, 0.0, 0.5));
             }
@@ -171,7 +210,66 @@ public class VehicleEntity extends Entity implements IVehicleDriveable {
             entityData.set(DATA_FUEL, (float) fuel);
             entityData.set(DATA_GEAR, gear);
             entityData.set(DATA_ENGINE_RPM, (float) engineRPM);
+            entityData.set(DATA_BODY_PITCH, (float) bodyPitch);
+            entityData.set(DATA_BODY_ROLL, (float) bodyRoll);
+            entityData.set(DATA_STEERING_ANGLE, (float) steeringAngle);
         }
+    }
+
+    private void updateClientVisualState() {
+        applyClientTarget();
+        updateClientVisualYaw();
+
+        clientBodyPitchOld = clientBodyPitch;
+        clientBodyRollOld = clientBodyRoll;
+        float pitchTarget = clientBodyPitch + Mth.clamp(
+                entityData.get(DATA_BODY_PITCH) - clientBodyPitch, -3.0f, 3.0f);
+        float rollTarget = clientBodyRoll + Mth.clamp(
+                entityData.get(DATA_BODY_ROLL) - clientBodyRoll, -4.0f, 4.0f);
+        clientBodyPitch += (pitchTarget - clientBodyPitch) * 0.45f;
+        clientBodyRoll += (rollTarget - clientBodyRoll) * 0.45f;
+        speed = entityData.get(DATA_SPEED);
+        fuel = entityData.get(DATA_FUEL);
+        gear = entityData.get(DATA_GEAR);
+        engineRPM = entityData.get(DATA_ENGINE_RPM);
+        steeringAngle = entityData.get(DATA_STEERING_ANGLE);
+    }
+
+    private void updateClientVisualYaw() {
+        if (!clientVisualYawInitialized) {
+            resetClientVisualYaw(clientVisualYawResetPending
+                    ? clientVisualYawTarget : this.getYRot());
+            clientVisualYawResetPending = false;
+            return;
+        }
+
+        clientVisualYawOld = clientVisualYaw;
+        if (clientVisualYawResetPending) {
+            resetClientVisualYaw(clientVisualYawTarget);
+            clientVisualYawResetPending = false;
+            return;
+        }
+
+        float error = Mth.wrapDegrees(clientVisualYawTarget - clientVisualYaw);
+        clientVisualYawVelocity = Mth.clamp(
+                clientVisualYawVelocity * 0.55f + error * 0.35f,
+                -12.0f, 12.0f);
+        if (Math.abs(error) < 0.02f && Math.abs(clientVisualYawVelocity) < 0.02f) {
+            clientVisualYaw += error;
+            clientVisualYawVelocity = 0.0f;
+        } else {
+            clientVisualYaw += clientVisualYawVelocity;
+        }
+        this.setYRot(clientVisualYaw);
+    }
+
+    private void resetClientVisualYaw(float yaw) {
+        clientVisualYaw = yaw;
+        clientVisualYawOld = yaw;
+        clientVisualYawTarget = yaw;
+        clientVisualYawVelocity = 0.0f;
+        clientVisualYawInitialized = true;
+        this.setYRot(yaw);
     }
 
     // ── 驾驶输入 ──
@@ -235,9 +333,51 @@ public class VehicleEntity extends Entity implements IVehicleDriveable {
     public int     getAbsTimer()     { return absTimer; }
     public void    setAbsTimer(int t){ this.absTimer = t; }
     public double  getVehicleWeight(){ return vehicleWeight; }
+    public double  getYawRate()      { return yawRate; }
+    public double  getThrottleInput(){ return throttleInput; }
+    public double  getBrakeInput()   { return brakeInput; }
+    public double  getSteeringInput(){ return steeringInput; }
+    public double  getRearGripFactor(){ return rearGripFactor; }
+    public double  getBodyPitch()    { return bodyPitch; }
+    public double  getBodyRoll()     { return bodyRoll; }
+    public double  getBodyPitchVelocity() { return bodyPitchVelocity; }
+    public double  getBodyRollVelocity()  { return bodyRollVelocity; }
 
     public void setSpeed(double s) { this.speed = Math.max(-maxSpeed * 0.3, Math.min(s, maxSpeed)); }
-    public void setSteeringAngle(double a) { this.steeringAngle = Math.max(-35.0, Math.min(a, 35.0)); }
+    public void setSteeringAngle(double a) {
+        double limit = vehicleType != null
+                ? vehicleType.getEffectiveMaxSteeringAngle() : 35.0;
+        this.steeringAngle = Math.max(-limit, Math.min(a, limit));
+    }
+    public void setYawRate(double value) { this.yawRate = value; }
+    public void setThrottleInput(double value) { this.throttleInput = clampUnit(value); }
+    public void setBrakeInput(double value) { this.brakeInput = clampUnit(value); }
+    public void setSteeringInput(double value) {
+        this.steeringInput = Math.max(-1.0, Math.min(value, 1.0));
+    }
+    public void setRearGripFactor(double value) {
+        this.rearGripFactor = Math.max(0.15, Math.min(value, 1.0));
+    }
+    public void setBodyPitch(double value) { this.bodyPitch = clamp(value, -15.0, 15.0); }
+    public void setBodyRoll(double value) { this.bodyRoll = clamp(value, -18.0, 18.0); }
+    public void setBodyPitchVelocity(double value) { this.bodyPitchVelocity = value; }
+    public void setBodyRollVelocity(double value) { this.bodyRollVelocity = value; }
+
+    public float getVisualBodyPitch(float partialTick) {
+        return clientBodyPitchOld + (clientBodyPitch - clientBodyPitchOld) * partialTick;
+    }
+
+    public float getVisualBodyRoll(float partialTick) {
+        return clientBodyRollOld + (clientBodyRoll - clientBodyRollOld) * partialTick;
+    }
+
+    public float getVisualYaw(float partialTick) {
+        if (!level().isClientSide || !clientVisualYawInitialized) {
+            return this.getYRot();
+        }
+        return clientVisualYawOld
+                + (clientVisualYaw - clientVisualYawOld) * partialTick;
+    }
 
     public void setVehicleType(VehicleType type) {
         this.vehicleType = type;
@@ -246,6 +386,7 @@ public class VehicleEntity extends Entity implements IVehicleDriveable {
             maxFuel = type.fuelCapacity();
             fuel = maxFuel;
             vehicleWeight = type.weight();
+            wheelsInitialized = false;
             // 同步 OBJ 渲染参数到客户端
             entityData.set(DATA_OBJ_PATH, type.objModelPath() != null ? type.objModelPath() : "");
             entityData.set(DATA_OBJ_SCALE, (float) type.objScale());
@@ -262,6 +403,25 @@ public class VehicleEntity extends Entity implements IVehicleDriveable {
     /** 客户端安全：从 entityData 读取 OBJ 缩放（已同步）。 */
     public float getSyncedObjScale() {
         return entityData.get(DATA_OBJ_SCALE);
+    }
+
+    public Vec3 getRiderWorldPosition(Vec3 localOffset, float partialTick) {
+        double pitch = Math.toRadians(level().isClientSide
+                ? getVisualBodyPitch(partialTick) : bodyPitch);
+        double roll = Math.toRadians(level().isClientSide
+                ? getVisualBodyRoll(partialTick) : bodyRoll);
+
+        double x1 = localOffset.x * Math.cos(roll) - localOffset.y * Math.sin(roll);
+        double y1 = localOffset.x * Math.sin(roll) + localOffset.y * Math.cos(roll);
+        double z1 = localOffset.z;
+        double y2 = y1 * Math.cos(pitch) - z1 * Math.sin(pitch);
+        double z2 = y1 * Math.sin(pitch) + z1 * Math.cos(pitch);
+
+        double yaw = Math.toRadians(level().isClientSide
+                ? getVisualYaw(partialTick) : this.getYRot());
+        double worldX = x1 * Math.cos(yaw) - z2 * Math.sin(yaw);
+        double worldZ = x1 * Math.sin(yaw) + z2 * Math.cos(yaw);
+        return position().add(worldX, y2, worldZ);
     }
 
     /** 获取当前车辆配置的 key（用于 spawn item NBT）。 */
@@ -285,21 +445,30 @@ public class VehicleEntity extends Entity implements IVehicleDriveable {
     @Override
     public void lerpTo(double x, double y, double z, float yRot, float xRot,
                        int steps, boolean teleport) {
-        if (isBeingDriven() && level().isClientSide) {
-            net.minecraft.client.player.LocalPlayer localPlayer =
-                    net.minecraft.client.Minecraft.getInstance().player;
-            if (localPlayer != null && localPlayer.getVehicle() == this) {
-                // 不调 super.lerpTo — 它会在 baseTick 之前改 yaw，
-                // 导致 yRotO 捕获新值 → yaw 插值消失。
-                // 仅暂存目标，Phase.END 时 applyClientTarget() 统一应用。
-                this.clientTargetX = x;
-                this.clientTargetY = y;
-                this.clientTargetZ = z;
-                this.clientTargetYRot = yRot;
-                this.clientTargetXRot = xRot;
-                this.hasClientTarget = true;
-                return;
+        if (level().isClientSide) {
+            double dx = x - this.getX();
+            double dy = y - this.getY();
+            double dz = z - this.getZ();
+            float yawError = clientVisualYawInitialized
+                    ? Mth.wrapDegrees(yRot - clientVisualYaw) : 0.0f;
+            boolean hardReset = teleport
+                    || dx * dx + dy * dy + dz * dz > 64.0
+                    || Math.abs(yawError) > 100.0f;
+
+            this.clientTargetX = x;
+            this.clientTargetY = y;
+            this.clientTargetZ = z;
+            this.clientTargetXRot = xRot;
+            this.hasClientTarget = true;
+
+            if (!clientVisualYawInitialized || hardReset) {
+                this.clientVisualYawTarget = yRot;
+                this.clientVisualYawResetPending = true;
+            } else {
+                this.clientVisualYawTarget = clientVisualYaw
+                        + Mth.wrapDegrees(yRot - clientVisualYaw);
             }
+            return;
         }
         super.lerpTo(x, y, z, yRot, xRot, steps, teleport);
     }
@@ -352,12 +521,7 @@ public class VehicleEntity extends Entity implements IVehicleDriveable {
         if (this.hasPassenger(passenger)) {
             // 驾驶座：车顶上方偏左侧
             Vec3 offset = new Vec3(0.5, getPassengersRidingOffset(), -0.2);
-            float yawRad = (float) Math.toRadians(this.getYRot());
-            double cos = Math.cos(yawRad);
-            double sin = Math.sin(yawRad);
-            double rx = offset.x * cos - offset.z * sin;
-            double rz = offset.x * sin + offset.z * cos;
-            Vec3 worldPos = this.position().add(rx, offset.y, rz);
+            Vec3 worldPos = getRiderWorldPosition(offset, 1.0f);
             passenger.setPos(worldPos.x, worldPos.y, worldPos.z);
         } else {
             super.positionRider(passenger, moveFunc);
@@ -370,5 +534,19 @@ public class VehicleEntity extends Entity implements IVehicleDriveable {
     public EntityDimensions getDimensions(Pose pose) {
         // 车辆大小：宽 2.2 方块，高 1.5 方块
         return EntityDimensions.scalable(2.2f, 1.5f);
+    }
+
+    private static double clampUnit(double value) {
+        return Math.max(0.0, Math.min(value, 1.0));
+    }
+
+    private static double clamp(double value, double min, double max) {
+        return Math.max(min, Math.min(value, max));
+    }
+
+    private static double moveToward(double current, double target, double maxDelta) {
+        if (current < target) return Math.min(current + maxDelta, target);
+        if (current > target) return Math.max(current - maxDelta, target);
+        return current;
     }
 }

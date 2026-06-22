@@ -103,7 +103,16 @@ public final class VehicleConfigLoader {
                     getDoubleOrDefault(obj, "cogHeight", 0.5),
                     getDoubleOrDefault(obj, "weightDistribution", 0.5),
                     getDoubleOrDefault(obj, "engineInertia", 0.15),
-                    getDoubleOrDefault(obj, "engineBrakingTorque", 50.0)
+                    getDoubleOrDefault(obj, "engineBrakingTorque", 50.0),
+                    getDoubleOrDefault(obj, "wheelBase", 3.2),
+                    getDoubleOrDefault(obj, "trackWidth", 2.0),
+                    getDoubleOrDefault(obj, "yawInertia", 2.6),
+                    getDoubleOrDefault(obj, "aerodynamicDrag", 0.006),
+                    getDoubleOrDefault(obj, "rollingResistance", 0.0015),
+                    getDoubleOrDefault(obj, "maxSteeringAngle", 35.0),
+                    getDoubleOrDefault(obj, "inputResponse", 0.18),
+                    getDoubleOrDefault(obj, "bodyPitchStrength", 85.0),
+                    getDoubleOrDefault(obj, "bodyRollStrength", 110.0)
             );
         } catch (Exception e) {
             LOGGER.error("Failed to parse vehicle type from: {}", id, e);

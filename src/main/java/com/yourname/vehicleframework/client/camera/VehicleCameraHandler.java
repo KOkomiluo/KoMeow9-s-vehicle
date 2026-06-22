@@ -66,17 +66,10 @@ public final class VehicleCameraHandler {
 
         // 2. 计算骑乘位置（与 positionRider 服务端逻辑一致）
         Vec3 offset = new Vec3(0.5, vehicle.getPassengersRidingOffset(), -0.2);
-        float yawRad = (float) Math.toRadians(vehicle.getYRot());
-        double cos = Math.cos(yawRad);
-        double sin = Math.sin(yawRad);
-        double rx = offset.x * cos - offset.z * sin;
-        double rz = offset.x * sin + offset.z * cos;
+        Vec3 riderPosition = vehicle.getRiderWorldPosition(offset, 1.0f);
 
         // 3. 设置玩家位置（60fps 平滑跟随）— 不锁定 yaw，让玩家自由环顾
-        player.setPos(
-                vehicle.getX() + rx,
-                vehicle.getY() + offset.y,
-                vehicle.getZ() + rz);
+        player.setPos(riderPosition.x, riderPosition.y, riderPosition.z);
         // 注意：不要 setYRot(vehicle.getYRot()) — 这会锁定摄像机视角，阻止自由环顾
     }
 

@@ -67,7 +67,10 @@ public class VehicleRenderer extends EntityRenderer<VehicleEntity> {
         float centerY =  modelGroup.getBoundsMin()[1];
         float centerZ = (modelGroup.getBoundsMin()[2] + modelGroup.getBoundsMax()[2]) / 2.0f;
 
-        poseStack.mulPose(Axis.YP.rotationDegrees(YAW_OFFSET - entityYaw));
+        float visualYaw = entity.getVisualYaw(partialTick);
+        poseStack.mulPose(Axis.YP.rotationDegrees(YAW_OFFSET - visualYaw));
+        poseStack.mulPose(Axis.ZP.rotationDegrees(entity.getVisualBodyRoll(partialTick)));
+        poseStack.mulPose(Axis.XP.rotationDegrees(entity.getVisualBodyPitch(partialTick)));
         poseStack.scale(SCALE, SCALE, SCALE);
         poseStack.translate(-centerX, -centerY, -centerZ);
 
