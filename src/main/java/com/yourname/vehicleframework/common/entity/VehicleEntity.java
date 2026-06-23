@@ -447,14 +447,9 @@ public class VehicleEntity extends Entity implements IVehicleDriveable {
     }
 
     private double calculatePredictedRpm(int targetGear) {
-        if (targetGear == 0) return 800.0;
         VehicleType type = vehicleType != null ? vehicleType : VehicleType.DEFAULT;
-        // getSpeed() 为 blocks/tick；乘 20 转换为 blocks/second。
-        double wheelAngularVelocity = Math.abs(getSpeed()) * 20.0 / 0.4;
-        return wheelAngularVelocity
-                * Math.abs(type.getGearRatio(targetGear))
-                * type.getEffectiveFinalDriveRatio()
-                * (60.0 / (2.0 * Math.PI));
+        return VehiclePhysicsEngine.calculateArcadeRpm(
+                type, getSpeed(), targetGear, getThrottleInput());
     }
 
     public int findBestAutomaticGear() {
@@ -469,7 +464,7 @@ public class VehicleEntity extends Entity implements IVehicleDriveable {
             double rpm = calculatePredictedRpm(candidate);
             if (rpm > 7000.0) continue;
 
-            double difference = Math.abs(rpm - 3500.0);
+            double difference = Math.abs(rpm - 4500.0);
             if (difference < bestDifference) {
                 bestDifference = difference;
                 bestGear = candidate;

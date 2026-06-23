@@ -1,5 +1,6 @@
 package com.yourname.vehicleframework.common.physics;
 
+import com.yourname.vehicleframework.VehicleFramework;
 import com.yourname.vehicleframework.common.entity.VehicleEntity;
 import com.yourname.vehicleframework.data.VehicleType;
 
@@ -30,6 +31,13 @@ public final class VehiclePhysicsEngine {
     private static final double FUEL_ACCEL_FACTOR = 0.015;
     private static final double LOW_SPEED_BLEND_START = 0.05;
     private static final double LOW_SPEED_BLEND_END = 0.24;
+    private static final int TRACTION_LOG_INTERVAL_TICKS = 100;
+    private static final double[] FORWARD_GEAR_SPEED_FACTORS = {
+            0.0, 0.30, 0.45, 0.60, 0.75, 0.88, 1.0
+    };
+    private static final double[] FORWARD_GEAR_DRIVE_FACTORS = {
+            0.0, 1.0, 0.96, 0.92, 0.88, 0.84, 0.80
+    };
 
     public static void applyPhysics(VehicleEntity vehicle, Level level) {
         VehicleType type = vehicle.getVehicleTypeConfig();
@@ -38,16 +46,41 @@ public final class VehiclePhysicsEngine {
         advanceWheelStates(vehicle);
         smoothInputs(vehicle, type);
         int groundedWheels = updateSuspension(vehicle, level, type);
+        boolean bodyGroundFallback = groundedWheels == 0 && vehicle.onGround();
+        int tractionWheels = bodyGroundFallback ? 4 : groundedWheels;
+        double tractionFactor = clamp(tractionWheels / 4.0, 0.0, 1.0);
+        logTractionState(vehicle, groundedWheels, tractionFactor, bodyGroundFallback);
         if (vehicle.isAutomaticShiftAvailable()) {
             autoGearShift(vehicle);
         }
         updateEngineRPM(vehicle, type);
 
-        MotionResult result = integratePlanarMotion(vehicle, type, groundedWheels);
+        MotionResult result = integratePlanarMotion(vehicle, type, tractionWheels);
         updateBodyAttitude(vehicle, type, result);
-        applyMovement(vehicle, groundedWheels);
+        applyMovement(vehicle, tractionWheels);
         applyAntiJitter(vehicle);
         consumeFuel(vehicle);
+    }
+
+    private static void logTractionState(
+            VehicleEntity vehicle, int groundedWheels,
+            double tractionFactor, boolean bodyGroundFallback) {
+        boolean hasDriveInput = vehicle.getThrottleInput() > 0.01
+                || vehicle.getBrakeInput() > 0.01;
+        if (!hasDriveInput
+                || vehicle.tickCount % TRACTION_LOG_INTERVAL_TICKS != 0) {
+            return;
+        }
+
+        VehicleFramework.LOGGER.info(
+                "Vehicle traction: entity={}, throttle={}, gear={}, groundedWheels={}, "
+                        + "tractionFactor={}, bodyGroundFallback={}",
+                vehicle.getId(),
+                String.format("%.2f", vehicle.getThrottleInput()),
+                vehicle.getGear(),
+                groundedWheels,
+                String.format("%.2f", tractionFactor),
+                bodyGroundFallback);
     }
 
     private static void smoothInputs(VehicleEntity vehicle, VehicleType type) {
@@ -231,16 +264,24 @@ public final class VehiclePhysicsEngine {
         double direction = gearRatio < 0 || gear == -1 ? -1.0 : 1.0;
         double driveInput = gear == -1
                 ? vehicle.getBrakeInput() : vehicle.getThrottleInput();
-        double torqueFactor = torqueCurve(
-                vehicle.getEngineRPM(), type.enginePeakTorque(), type.enginePeakRPM())
-                / Math.max(1.0, type.enginePeakTorque());
-        double gearFactor = Math.min(1.35, Math.abs(gearRatio) / 3.5);
+        double torqueFactor = clamp(
+                torqueCurve(vehicle.getEngineRPM(),
+                        type.enginePeakTorque(), type.enginePeakRPM())
+                        / Math.max(1.0, type.enginePeakTorque()),
+                0.72, 1.0);
+        double gearFactor = getGearDriveFactor(gear);
+        double gearSpeedLimit = getGearSpeedLimit(type, gear);
+        double speedRatio = gearSpeedLimit > 0.0
+                ? Math.abs(forwardSpeed) / gearSpeedLimit : 1.0;
+        double topSpeedFactor = 1.0
+                - smoothStep(0.97, 1.0, speedRatio);
 
         double acceleration = 0.0;
         if (vehicle.getFuel() > 0 && gear != 0) {
             acceleration += direction * type.acceleration()
                     * driveInput
-                    * torqueFactor * gearFactor * groundFactor;
+                    * torqueFactor * gearFactor
+                    * topSpeedFactor * groundFactor;
         }
 
         boolean brakingForward = forwardSpeed > 1.0e-4
@@ -332,23 +373,41 @@ public final class VehiclePhysicsEngine {
 
     private static void updateEngineRPM(VehicleEntity vehicle, VehicleType type) {
         double rpm = vehicle.getEngineRPM();
-        double speed = Math.abs(vehicle.getSpeed());
-        int gear = vehicle.getGear();
-        double targetRpm;
-
-        if (gear == 0) {
-            targetRpm = IDLE_RPM + vehicle.getThrottleInput() * 4200.0;
-        } else {
-            double wheelAngularVelocity = speed / 0.4;
-            targetRpm = wheelAngularVelocity
-                    * Math.abs(type.getGearRatio(gear))
-                    * type.getEffectiveFinalDriveRatio()
-                    * (60.0 / (2.0 * Math.PI));
-            targetRpm = Math.max(IDLE_RPM, targetRpm);
-        }
+        double targetRpm = calculateArcadeRpm(
+                type, vehicle.getSpeed(), vehicle.getGear(),
+                vehicle.getThrottleInput());
         double inertia = Math.max(0.05, type.engineInertia());
         rpm += (targetRpm - rpm) * clamp(0.16 / inertia, 0.08, 0.42);
         vehicle.setEngineRPM(clamp(rpm, IDLE_RPM * 0.75, MAX_RPM));
+    }
+
+    public static double calculateArcadeRpm(
+            VehicleType type, double speed, int gear, double throttleInput) {
+        if (gear == 0) {
+            return IDLE_RPM + clamp(throttleInput, 0.0, 1.0) * 4200.0;
+        }
+
+        double gearSpeedLimit = getGearSpeedLimit(type, gear);
+        if (gearSpeedLimit <= 0.0) return IDLE_RPM;
+
+        double normalizedSpeed = clamp(
+                Math.abs(speed) / gearSpeedLimit, 0.0, 1.0);
+        return IDLE_RPM + normalizedSpeed * (MAX_RPM - IDLE_RPM);
+    }
+
+    public static double getGearSpeedLimit(VehicleType type, int gear) {
+        if (type == null) type = VehicleType.DEFAULT;
+        if (gear == -1) return type.maxSpeed() * 0.30;
+        if (gear <= 0) return 0.0;
+        int index = Math.min(gear, FORWARD_GEAR_SPEED_FACTORS.length - 1);
+        return type.maxSpeed() * FORWARD_GEAR_SPEED_FACTORS[index];
+    }
+
+    private static double getGearDriveFactor(int gear) {
+        if (gear == -1) return 0.90;
+        if (gear <= 0) return 0.0;
+        int index = Math.min(gear, FORWARD_GEAR_DRIVE_FACTORS.length - 1);
+        return FORWARD_GEAR_DRIVE_FACTORS[index];
     }
 
     private static void autoGearShift(VehicleEntity vehicle) {

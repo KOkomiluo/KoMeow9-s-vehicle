@@ -1,8 +1,8 @@
 {
   "id": "sports_car",
   "displayName": "Sports Car",
-  "maxSpeed": 1.2,
-  "acceleration": 0.02,
+  "maxSpeed": 1.8,
+  "acceleration": 0.04,
   "brakingPower": 0.05,
   "handling": 1.2,
   "fuelCapacity": 120.0,
