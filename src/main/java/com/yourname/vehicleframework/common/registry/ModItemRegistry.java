@@ -1,6 +1,7 @@
 package com.yourname.vehicleframework.common.registry;
 
 import com.yourname.vehicleframework.VehicleFramework;
+import com.yourname.vehicleframework.common.item.FuelBucketItem;
 import com.yourname.vehicleframework.common.item.VehicleDismantleItem;
 import com.yourname.vehicleframework.common.item.VehicleKeyItem;
 import com.yourname.vehicleframework.common.item.VehicleSpawnItem;
@@ -26,9 +27,9 @@ public final class ModItemRegistry {
             ITEMS.register("vehicle_spawn_item", () ->
                     new VehicleSpawnItem(new Item.Properties()));
 
-    public static final RegistryObject<Item> FUEL_BUCKET =
+    public static final RegistryObject<FuelBucketItem> FUEL_BUCKET =
             ITEMS.register("fuel_bucket", () ->
-                    new Item(new Item.Properties().stacksTo(16)));
+                    new FuelBucketItem(new Item.Properties()));
 
     public static final RegistryObject<VehicleDismantleItem> DISMANTLE_TOOL =
             ITEMS.register("dismantle_tool", () ->

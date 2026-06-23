@@ -31,6 +31,7 @@ public final class VehiclePhysicsEngine {
     private static final double FUEL_ACCEL_FACTOR = 0.015;
     private static final double LOW_SPEED_BLEND_START = 0.05;
     private static final double LOW_SPEED_BLEND_END = 0.24;
+    private static final double REVERSE_STEER_SPEED_THRESHOLD = -0.01;
     private static final int TRACTION_LOG_INTERVAL_TICKS = 100;
     private static final double[] FORWARD_GEAR_SPEED_FACTORS = {
             0.0, 0.30, 0.45, 0.60, 0.75, 0.88, 1.0
@@ -193,9 +194,13 @@ public final class VehiclePhysicsEngine {
         double speedAbs = Math.abs(forwardSpeed);
         double safeSpeed = Math.max(speedAbs, 0.045);
         double yawRate = vehicle.getYawRate();
+        boolean reversing = forwardSpeed < REVERSE_STEER_SPEED_THRESHOLD;
+        double steeringForYaw = reversing ? -steering : steering;
 
         double frontSlip = Math.atan2(
                 lateralSpeed + distanceToFront * yawRate, safeSpeed) - steering;
+        double frontSlipForYaw = Math.atan2(
+                lateralSpeed + distanceToFront * yawRate, safeSpeed) - steeringForYaw;
         double rearSlip = Math.atan2(
                 lateralSpeed - distanceToRear * yawRate, safeSpeed);
 
@@ -204,6 +209,10 @@ public final class VehiclePhysicsEngine {
         double maximumLateralAcceleration = 0.08 * peakGrip * groundFactor;
         double frontLateralAcceleration = clamp(
                 -frontSlip * tireStiffness * 0.03 * frontWeight,
+                -maximumLateralAcceleration * frontWeight,
+                maximumLateralAcceleration * frontWeight);
+        double frontYawLateralAcceleration = clamp(
+                -frontSlipForYaw * tireStiffness * 0.03 * frontWeight,
                 -maximumLateralAcceleration * frontWeight,
                 maximumLateralAcceleration * frontWeight);
         double rearLateralAcceleration = clamp(
@@ -217,14 +226,17 @@ public final class VehiclePhysicsEngine {
         double lateralAcceleration = groundedWheels > 0
                 ? frontLateralAcceleration + rearLateralAcceleration : 0.0;
         double yawAcceleration = groundedWheels > 0
-                ? (distanceToFront * frontLateralAcceleration
+                ? (distanceToFront * frontYawLateralAcceleration
                     - distanceToRear * rearLateralAcceleration)
                     / type.getEffectiveYawInertia()
                 : 0.0;
         yawAcceleration = clamp(yawAcceleration, -0.04, 0.04);
+        if (reversing) {
+            yawAcceleration = -yawAcceleration;
+        }
 
         double kinematicYawRate = groundedWheels > 0
-                ? forwardSpeed / wheelBase * Math.tan(steering) : 0.0;
+                ? forwardSpeed / wheelBase * Math.tan(steeringForYaw) : 0.0;
         double dynamicYawRate = (yawRate + yawAcceleration) * 0.94;
         double dynamicBlend = smoothStep(LOW_SPEED_BLEND_START, LOW_SPEED_BLEND_END, speedAbs);
         yawRate = lerp(kinematicYawRate, dynamicYawRate, dynamicBlend);

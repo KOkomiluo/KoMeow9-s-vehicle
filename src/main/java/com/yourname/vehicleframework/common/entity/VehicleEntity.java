@@ -1,6 +1,7 @@
 package com.yourname.vehicleframework.common.entity;
 
 import com.yourname.vehicleframework.api.IVehicleDriveable;
+import com.yourname.vehicleframework.common.item.FuelBucketItem;
 import com.yourname.vehicleframework.common.item.VehicleDismantleItem;
 import com.yourname.vehicleframework.common.physics.VehiclePhysicsEngine;
 import com.yourname.vehicleframework.common.physics.Wheel;
@@ -9,6 +10,7 @@ import com.yourname.vehicleframework.data.SeatConfig;
 import com.yourname.vehicleframework.data.VehicleType;
 
 import net.minecraft.nbt.CompoundTag;
+import net.minecraft.network.chat.Component;
 import net.minecraft.network.syncher.EntityDataAccessor;
 import net.minecraft.network.syncher.EntityDataSerializers;
 import net.minecraft.network.syncher.SynchedEntityData;
@@ -26,6 +28,9 @@ import net.minecraft.world.level.Level;
 import net.minecraft.world.phys.Vec3;
 
 public class VehicleEntity extends Entity implements IVehicleDriveable {
+
+    private static final double REFUEL_SPEED_EPSILON = 0.01;
+    private static final double REFUEL_HORIZONTAL_MOTION_EPSILON = 0.015;
 
     private static final EntityDataAccessor<Float> DATA_SPEED =
             SynchedEntityData.defineId(VehicleEntity.class, EntityDataSerializers.FLOAT);
@@ -669,6 +674,10 @@ public class VehicleEntity extends Entity implements IVehicleDriveable {
                 return InteractionResult.SUCCESS;
             }
 
+            if (heldItem.getItem() instanceof FuelBucketItem) {
+                return refuelFromBucket(player, heldItem);
+            }
+
             // ── 驾驶：右键骑乘 ──
             if (getDriver() == null) {
                 player.startRiding(this);
@@ -677,6 +686,57 @@ public class VehicleEntity extends Entity implements IVehicleDriveable {
             }
         }
         return InteractionResult.SUCCESS;
+    }
+
+    private InteractionResult refuelFromBucket(Player player, ItemStack fuelBucket) {
+        if (!isStoppedForRefuel()) {
+            player.displayClientMessage(
+                    Component.translatable("message.vehicleframework.refuel_requires_stopped"),
+                    true);
+            return InteractionResult.SUCCESS;
+        }
+
+        double missingFuel = maxFuel - fuel;
+        if (missingFuel <= 0.001) {
+            player.displayClientMessage(
+                    Component.translatable("message.vehicleframework.fuel_tank_full"),
+                    true);
+            return InteractionResult.SUCCESS;
+        }
+
+        int bucketFuel = FuelBucketItem.getRemainingFuel(fuelBucket);
+        if (bucketFuel <= 0) {
+            player.displayClientMessage(
+                    Component.translatable("message.vehicleframework.fuel_bucket_empty"),
+                    true);
+            return InteractionResult.SUCCESS;
+        }
+
+        double fuelToAdd = Math.min(missingFuel, bucketFuel);
+        int consumedLiters = Math.max(1, (int) Math.ceil(fuelToAdd));
+        consumedLiters = Math.min(consumedLiters, bucketFuel);
+
+        setFuel(fuel + fuelToAdd);
+        FuelBucketItem.consumeFuel(fuelBucket, consumedLiters);
+
+        int fuelPercent = (int) Math.round(Math.max(0.0,
+                Math.min(100.0, getFuel() / Math.max(0.001, getMaxFuel()) * 100.0)));
+        player.displayClientMessage(
+                Component.translatable("message.vehicleframework.refueled",
+                        consumedLiters, fuelPercent),
+                true);
+        return InteractionResult.SUCCESS;
+    }
+
+    private boolean isStoppedForRefuel() {
+        if (Math.abs(speed) > REFUEL_SPEED_EPSILON) {
+            return false;
+        }
+
+        Vec3 motion = getDeltaMovement();
+        double horizontalMotionSqr = motion.x * motion.x + motion.z * motion.z;
+        return horizontalMotionSqr <= REFUEL_HORIZONTAL_MOTION_EPSILON
+                * REFUEL_HORIZONTAL_MOTION_EPSILON;
     }
 
     @Override
