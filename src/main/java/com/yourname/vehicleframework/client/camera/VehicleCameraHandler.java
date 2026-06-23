@@ -5,7 +5,6 @@ import com.yourname.vehicleframework.common.entity.VehicleEntity;
 
 import net.minecraft.client.Minecraft;
 import net.minecraft.world.entity.player.Player;
-import net.minecraft.world.phys.Vec3;
 
 import net.minecraftforge.api.distmarker.Dist;
 import net.minecraftforge.client.event.ViewportEvent;
@@ -64,9 +63,8 @@ public final class VehicleCameraHandler {
         // 1. 应用车辆延迟位置（baseTick 已保存 xOld，现在 setPos 不会破坏插值）
         vehicle.applyClientTarget();
 
-        // 2. 计算骑乘位置（与 positionRider 服务端逻辑一致）
-        Vec3 offset = new Vec3(0.5, vehicle.getPassengersRidingOffset(), -0.2);
-        Vec3 riderPosition = vehicle.getRiderWorldPosition(offset, 1.0f);
+        // 2. 使用与服务端完全相同的配置化驾驶位。
+        var riderPosition = vehicle.getRiderWorldPosition(1.0f);
 
         // 3. 设置玩家位置（60fps 平滑跟随）— 不锁定 yaw，让玩家自由环顾
         player.setPos(riderPosition.x, riderPosition.y, riderPosition.z);

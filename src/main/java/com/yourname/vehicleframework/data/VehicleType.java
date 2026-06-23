@@ -49,6 +49,7 @@ public record VehicleType(
         String hornSound,
         String objModelPath,
         double objScale,
+        SeatConfig[] seats,
         // ── 已有物理配置字段 ──
         double[] gearRatios,
         double finalDriveRatio,
@@ -99,6 +100,7 @@ public record VehicleType(
             "vehicle", "sports_car", "vehicle",
             1500.0, "vehicleframework:horn.default",
             "", 0.0625,
+            new SeatConfig[]{SeatConfig.DEFAULT_DRIVER},
             DEFAULT_GEAR_RATIOS, 3.5, 50.0, 8.0,
             4.0, 300.0, 4000.0, 0.9, "rwd",
             // ── P0-P2 新参数默认值 ──
@@ -198,5 +200,17 @@ public record VehicleType(
 
     public double getEffectiveInputResponse() {
         return inputResponse > 0 && inputResponse <= 1.0 ? inputResponse : 0.18;
+    }
+
+    /** Returns the configured driver seat or a safe default for legacy configs. */
+    public SeatConfig getDriverSeat() {
+        if (seats != null) {
+            for (SeatConfig seat : seats) {
+                if (seat != null && seat.driver() && seat.isValid()) {
+                    return seat;
+                }
+            }
+        }
+        return SeatConfig.DEFAULT_DRIVER;
     }
 }

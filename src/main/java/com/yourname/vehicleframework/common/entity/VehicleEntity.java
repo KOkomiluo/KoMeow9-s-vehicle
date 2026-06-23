@@ -5,6 +5,7 @@ import com.yourname.vehicleframework.common.item.VehicleDismantleItem;
 import com.yourname.vehicleframework.common.physics.VehiclePhysicsEngine;
 import com.yourname.vehicleframework.common.physics.Wheel;
 import com.yourname.vehicleframework.common.registry.ModItemRegistry;
+import com.yourname.vehicleframework.data.SeatConfig;
 import com.yourname.vehicleframework.data.VehicleType;
 
 import net.minecraft.nbt.CompoundTag;
@@ -45,6 +46,12 @@ public class VehicleEntity extends Entity implements IVehicleDriveable {
     private static final EntityDataAccessor<Float> DATA_BODY_ROLL =
             SynchedEntityData.defineId(VehicleEntity.class, EntityDataSerializers.FLOAT);
     private static final EntityDataAccessor<Float> DATA_STEERING_ANGLE =
+            SynchedEntityData.defineId(VehicleEntity.class, EntityDataSerializers.FLOAT);
+    private static final EntityDataAccessor<Float> DATA_DRIVER_SEAT_X =
+            SynchedEntityData.defineId(VehicleEntity.class, EntityDataSerializers.FLOAT);
+    private static final EntityDataAccessor<Float> DATA_DRIVER_SEAT_Y =
+            SynchedEntityData.defineId(VehicleEntity.class, EntityDataSerializers.FLOAT);
+    private static final EntityDataAccessor<Float> DATA_DRIVER_SEAT_Z =
             SynchedEntityData.defineId(VehicleEntity.class, EntityDataSerializers.FLOAT);
 
     private VehicleType vehicleType;
@@ -106,6 +113,9 @@ public class VehicleEntity extends Entity implements IVehicleDriveable {
         this.entityData.define(DATA_BODY_PITCH, 0.0f);
         this.entityData.define(DATA_BODY_ROLL, 0.0f);
         this.entityData.define(DATA_STEERING_ANGLE, 0.0f);
+        this.entityData.define(DATA_DRIVER_SEAT_X, (float) SeatConfig.DEFAULT_DRIVER.x());
+        this.entityData.define(DATA_DRIVER_SEAT_Y, (float) SeatConfig.DEFAULT_DRIVER.y());
+        this.entityData.define(DATA_DRIVER_SEAT_Z, (float) SeatConfig.DEFAULT_DRIVER.z());
     }
 
     // ── 车轮初始化 ──
@@ -147,6 +157,9 @@ public class VehicleEntity extends Entity implements IVehicleDriveable {
         this.bodyRoll = tag.getDouble("BodyRoll");
         if (tag.contains("ObjPath")) entityData.set(DATA_OBJ_PATH, tag.getString("ObjPath"));
         if (tag.contains("ObjScale")) entityData.set(DATA_OBJ_SCALE, tag.getFloat("ObjScale"));
+        if (tag.contains("DriverSeatX")) entityData.set(DATA_DRIVER_SEAT_X, tag.getFloat("DriverSeatX"));
+        if (tag.contains("DriverSeatY")) entityData.set(DATA_DRIVER_SEAT_Y, tag.getFloat("DriverSeatY"));
+        if (tag.contains("DriverSeatZ")) entityData.set(DATA_DRIVER_SEAT_Z, tag.getFloat("DriverSeatZ"));
         String typeKey = tag.getString("VehicleType");
         if (!typeKey.isEmpty()) entityData.set(DATA_VEHICLE_TYPE, typeKey);
     }
@@ -163,6 +176,9 @@ public class VehicleEntity extends Entity implements IVehicleDriveable {
         tag.putDouble("BodyRoll", bodyRoll);
         tag.putString("ObjPath", entityData.get(DATA_OBJ_PATH));
         tag.putFloat("ObjScale", entityData.get(DATA_OBJ_SCALE));
+        tag.putFloat("DriverSeatX", entityData.get(DATA_DRIVER_SEAT_X));
+        tag.putFloat("DriverSeatY", entityData.get(DATA_DRIVER_SEAT_Y));
+        tag.putFloat("DriverSeatZ", entityData.get(DATA_DRIVER_SEAT_Z));
         tag.putString("VehicleType", entityData.get(DATA_VEHICLE_TYPE));
     }
 
@@ -390,6 +406,10 @@ public class VehicleEntity extends Entity implements IVehicleDriveable {
             // 同步 OBJ 渲染参数到客户端
             entityData.set(DATA_OBJ_PATH, type.objModelPath() != null ? type.objModelPath() : "");
             entityData.set(DATA_OBJ_SCALE, (float) type.objScale());
+            SeatConfig driverSeat = type.getDriverSeat();
+            entityData.set(DATA_DRIVER_SEAT_X, (float) driverSeat.x());
+            entityData.set(DATA_DRIVER_SEAT_Y, (float) driverSeat.y());
+            entityData.set(DATA_DRIVER_SEAT_Z, (float) driverSeat.z());
         }
     }
 
@@ -405,7 +425,15 @@ public class VehicleEntity extends Entity implements IVehicleDriveable {
         return entityData.get(DATA_OBJ_SCALE);
     }
 
-    public Vec3 getRiderWorldPosition(Vec3 localOffset, float partialTick) {
+    public Vec3 getDriverSeatOffset() {
+        return new Vec3(
+                entityData.get(DATA_DRIVER_SEAT_X),
+                entityData.get(DATA_DRIVER_SEAT_Y),
+                entityData.get(DATA_DRIVER_SEAT_Z));
+    }
+
+    public Vec3 getRiderWorldPosition(float partialTick) {
+        Vec3 localOffset = getDriverSeatOffset();
         double pitch = Math.toRadians(level().isClientSide
                 ? getVisualBodyPitch(partialTick) : bodyPitch);
         double roll = Math.toRadians(level().isClientSide
@@ -513,15 +541,13 @@ public class VehicleEntity extends Entity implements IVehicleDriveable {
 
     @Override
     public double getPassengersRidingOffset() {
-        return 0.45; // Civic OBJ 模型骑乘偏移
+        return getDriverSeatOffset().y;
     }
 
     @Override
     protected void positionRider(Entity passenger, MoveFunction moveFunc) {
         if (this.hasPassenger(passenger)) {
-            // 驾驶座：车顶上方偏左侧
-            Vec3 offset = new Vec3(0.5, getPassengersRidingOffset(), -0.2);
-            Vec3 worldPos = getRiderWorldPosition(offset, 1.0f);
+            Vec3 worldPos = getRiderWorldPosition(1.0f);
             passenger.setPos(worldPos.x, worldPos.y, worldPos.z);
         } else {
             super.positionRider(passenger, moveFunc);

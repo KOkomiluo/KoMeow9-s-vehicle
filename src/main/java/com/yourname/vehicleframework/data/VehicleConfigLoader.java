@@ -18,6 +18,9 @@ import java.io.InputStream;
 import java.io.InputStreamReader;
 import java.nio.charset.StandardCharsets;
 import java.util.HashMap;
+import java.util.ArrayList;
+import java.util.Comparator;
+import java.util.List;
 import java.util.Map;
 
 /**
@@ -85,6 +88,7 @@ public final class VehicleConfigLoader {
                     getOrDefault(obj, "hornSound", "vehicleframework:horn.default"),
                     getOrDefault(obj, "objModelPath", ""),
                     getDoubleOrDefault(obj, "objScale", 0.0625),
+                    getSeatsOrDefault(obj),
                     // ── 新增物理配置字段 ──
                     getDoubleArrayOrDefault(obj, "gearRatios", VehicleType.DEFAULT_GEAR_RATIOS),
                     getDoubleOrDefault(obj, "finalDriveRatio", 3.5),
@@ -145,6 +149,40 @@ public final class VehicleConfigLoader {
             LOGGER.warn("Failed to parse '{}' as double array, using default", key);
             return def;
         }
+    }
+
+    private static SeatConfig[] getSeatsOrDefault(com.google.gson.JsonObject obj) {
+        if (!obj.has("seats") || !obj.get("seats").isJsonArray()) {
+            return new SeatConfig[]{SeatConfig.DEFAULT_DRIVER};
+        }
+
+        List<SeatConfig> seats = new ArrayList<>();
+        try {
+            for (JsonElement element : obj.getAsJsonArray("seats")) {
+                if (!element.isJsonObject()) continue;
+                var seatObj = element.getAsJsonObject();
+                if (!seatObj.has("offset") || !seatObj.get("offset").isJsonArray()) continue;
+
+                JsonArray offset = seatObj.getAsJsonArray("offset");
+                if (offset.size() != 3) continue;
+
+                SeatConfig seat = new SeatConfig(
+                        getIntOrDefault(seatObj, "index", seats.size()),
+                        seatObj.has("isDriver") && seatObj.get("isDriver").getAsBoolean(),
+                        offset.get(0).getAsDouble(),
+                        offset.get(1).getAsDouble(),
+                        offset.get(2).getAsDouble());
+                if (seat.isValid()) seats.add(seat);
+            }
+        } catch (Exception e) {
+            LOGGER.warn("Failed to parse seats, using default driver seat", e);
+            return new SeatConfig[]{SeatConfig.DEFAULT_DRIVER};
+        }
+
+        boolean hasDriver = seats.stream().anyMatch(SeatConfig::driver);
+        if (!hasDriver) seats.add(SeatConfig.DEFAULT_DRIVER);
+        seats.sort(Comparator.comparingInt(SeatConfig::index));
+        return seats.toArray(SeatConfig[]::new);
     }
 
     public static VehicleType getConfig(String id) {

@@ -26,6 +26,7 @@
 - 自研 OBJ/MTL 解析、缓存和实体渲染
 - 支持 OBJ 四边形三角化、UV、法线和命名对象
 - 动态 FOV 与乘员位置同步
+- JSON 配置化驾驶位，服务端、客户端和摄像机共用同一偏移
 
 ## 操作
 
@@ -224,6 +225,10 @@ src/main/resources/data/vehicleframework/vehicles/
   "objScale": 0.5,
   "texturePath": "civic2008",
 
+  "seats": [
+    { "index": 0, "isDriver": true, "offset": [0.5, 0.10, -0.2] }
+  ],
+
   "driveType": "rwd",
   "gearRatios": [-3.5, 0.0, 3.5, 2.2, 1.5, 1.1, 0.85, 0.7],
   "finalDriveRatio": 3.5,
@@ -266,6 +271,8 @@ src/main/resources/data/vehicleframework/vehicles/
 | `bodyPitchStrength` | 加减速造成的车身俯仰强度 |
 | `bodyRollStrength` | 转弯造成的车身侧倾强度 |
 
+座位 `offset` 使用车辆局部坐标：X 为左右、Y 为高度、Z 为前后。当前运行时会读取标记为 `isDriver: true` 的驾驶位；缺失或非法配置会回退到安全默认值。
+
 未填写新增字段时，`VehicleConfigLoader` 会使用默认值，因此旧车辆 JSON 仍可加载。
 
 ## 添加或替换车辆
@@ -282,7 +289,7 @@ src/main/resources/data/vehicleframework/vehicles/
 - 当前注册的 `VehicleRenderer` 仍固定引用 Civic 的模型和贴图资源；完整的按车辆配置动态切换渲染资源尚未接入主渲染器。
 - OBJ 中的车轮对象没有可靠的 `wheel_fl`、`wheel_fr`、`wheel_rl`、`wheel_rr` 分组，因此暂未启用车轮转向和滚动动画。
 - 碰撞箱仍是 Minecraft 直立 AABB；车身 pitch/roll 只影响视觉和乘员位置。
-- JSON 中的座位、碰撞箱和车轮名称结构目前并未全部接入运行时。
+- JSON 中的碰撞箱和车轮名称结构目前尚未全部接入运行时；驾驶位配置已经生效。
 - `VehicleKeyItem` 已有基础代码，但完整的点火、锁车和权限流程尚未完成。
 
 如需车轮动画，应先在 Blockbench 中将四只车轮分别放入明确命名的组，再重新导出 OBJ。
