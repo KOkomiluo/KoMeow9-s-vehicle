@@ -1,4 +1,8 @@
 {
+  "key.categories.vehicleframework": "Vehicle Framework",
+  "key.vehicleframework.shift_up": "Shift Vehicle Up",
+  "key.vehicleframework.shift_down": "Shift Vehicle Down",
+  "key.vehicleframework.toggle_transmission_mode": "Toggle AT/MT Mode",
   "itemGroup.vehicleframework": "Vehicle Framework",
   "entity.vehicleframework.vehicle": "Vehicle",
   "entity.vehicleframework.vehicle_seat": "Vehicle Seat",
@@ -14,5 +18,14 @@
   "message.vehicleframework.engine_stop": "Engine stopped",
   "message.vehicleframework.locked": "Vehicle locked",
   "message.vehicleframework.unlocked": "Vehicle unlocked",
-  "message.vehicleframework.no_fuel": "Out of fuel!"
+  "message.vehicleframework.no_fuel": "Out of fuel!",
+  "message.vehicleframework.gear_changed_mt": "Gear: %s (MT)",
+  "message.vehicleframework.gear_changed_at": "Gear: %s (AT temporary override)",
+  "message.vehicleframework.gear_rejected": "Cannot select that gear at the current speed",
+  "message.vehicleframework.transmission_at": "Transmission mode: AT",
+  "message.vehicleframework.transmission_mt": "Transmission mode: MT",
+  "hud.vehicleframework.speed": "Speed: %s km/h",
+  "hud.vehicleframework.fuel": "Fuel: %s%%",
+  "hud.vehicleframework.gear": "Gear: %s",
+  "hud.vehicleframework.mode": "Mode: %s"
 }

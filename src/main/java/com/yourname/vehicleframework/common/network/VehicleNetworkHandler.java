@@ -10,7 +10,7 @@ public final class VehicleNetworkHandler {
 
     private VehicleNetworkHandler() {}
 
-    private static final String PROTOCOL_VERSION = "1";
+    private static final String PROTOCOL_VERSION = "3";
 
     public static final SimpleChannel CHANNEL = NetworkRegistry.newSimpleChannel(
             new ResourceLocation(VehicleFramework.MOD_ID, "main"),
@@ -26,6 +26,18 @@ public final class VehicleNetworkHandler {
                 .encoder(VehicleDrivingPacket::encode)
                 .decoder(VehicleDrivingPacket::new)
                 .consumerMainThread(VehicleDrivingPacket::handle)
+                .add();
+
+        CHANNEL.messageBuilder(VehicleGearShiftPacket.class, packetId++)
+                .encoder(VehicleGearShiftPacket::encode)
+                .decoder(VehicleGearShiftPacket::new)
+                .consumerMainThread(VehicleGearShiftPacket::handle)
+                .add();
+
+        CHANNEL.messageBuilder(VehicleTransmissionModePacket.class, packetId++)
+                .encoder(VehicleTransmissionModePacket::encode)
+                .decoder(VehicleTransmissionModePacket::new)
+                .consumerMainThread(VehicleTransmissionModePacket::handle)
                 .add();
     }
 }

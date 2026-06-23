@@ -55,7 +55,9 @@ public class VehicleDrivingPacket {
             ServerPlayer player = ctx.get().getSender();
             if (player != null) {
                 Entity entity = player.level().getEntity(entityId);
-                if (entity instanceof VehicleEntity vehicle) {
+                if (entity instanceof VehicleEntity vehicle
+                        && player.getVehicle() == vehicle
+                        && vehicle.getDriver() == player) {
                     vehicle.handleDrivingInput(accelerating, braking, steeringLeft, steeringRight, handbrake);
                 }
             }

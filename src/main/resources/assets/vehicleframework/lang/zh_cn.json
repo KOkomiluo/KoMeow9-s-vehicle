@@ -1,4 +1,8 @@
 {
+  "key.categories.vehicleframework": "载具框架",
+  "key.vehicleframework.shift_up": "载具升挡",
+  "key.vehicleframework.shift_down": "载具降挡",
+  "key.vehicleframework.toggle_transmission_mode": "切换 AT/MT 模式",
   "itemGroup.vehicleframework": "载具框架",
   "entity.vehicleframework.vehicle": "载具",
   "entity.vehicleframework.vehicle_seat": "载具座椅",
@@ -14,5 +18,14 @@
   "message.vehicleframework.engine_stop": "引擎已关闭",
   "message.vehicleframework.locked": "载具已锁定",
   "message.vehicleframework.unlocked": "载具已解锁",
-  "message.vehicleframework.no_fuel": "燃料耗尽！"
+  "message.vehicleframework.no_fuel": "燃料耗尽！",
+  "message.vehicleframework.gear_changed_mt": "当前挡位：%s（MT）",
+  "message.vehicleframework.gear_changed_at": "当前挡位：%s（AT 临时干预）",
+  "message.vehicleframework.gear_rejected": "当前速度下无法切换到目标挡位",
+  "message.vehicleframework.transmission_at": "变速箱模式：AT",
+  "message.vehicleframework.transmission_mt": "变速箱模式：MT",
+  "hud.vehicleframework.speed": "速度: %s km/h",
+  "hud.vehicleframework.fuel": "油量: %s%%",
+  "hud.vehicleframework.gear": "挡位: %s",
+  "hud.vehicleframework.mode": "模式: %s"
 }

@@ -1,6 +1,8 @@
 package com.yourname.vehicleframework.client;
 
 import com.yourname.vehicleframework.VehicleFramework;
+import com.yourname.vehicleframework.client.input.VehicleKeyInputHandler;
+import com.yourname.vehicleframework.client.hud.VehicleHudOverlay;
 import com.yourname.vehicleframework.client.render.VehicleRenderer;
 import com.yourname.vehicleframework.common.registry.ModEntityRegistry;
 
@@ -13,6 +15,8 @@ public class VehicleFrameworkClient {
     public static void init(IEventBus modEventBus) {
         modEventBus.addListener(VehicleFrameworkClient::onClientSetup);
         modEventBus.addListener(VehicleFrameworkClient::onRegisterRenderers);
+        modEventBus.addListener(VehicleKeyInputHandler::registerKeyMappings);
+        modEventBus.addListener(VehicleHudOverlay::register);
     }
 
     private static void onClientSetup(final FMLClientSetupEvent event) {

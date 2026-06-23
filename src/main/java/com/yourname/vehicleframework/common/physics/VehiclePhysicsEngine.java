@@ -38,7 +38,9 @@ public final class VehiclePhysicsEngine {
         advanceWheelStates(vehicle);
         smoothInputs(vehicle, type);
         int groundedWheels = updateSuspension(vehicle, level, type);
-        autoGearShift(vehicle);
+        if (vehicle.isAutomaticShiftAvailable()) {
+            autoGearShift(vehicle);
+        }
         updateEngineRPM(vehicle, type);
 
         MotionResult result = integratePlanarMotion(vehicle, type, groundedWheels);

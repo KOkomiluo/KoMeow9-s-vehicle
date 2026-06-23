@@ -53,12 +53,26 @@ public class VehicleEntity extends Entity implements IVehicleDriveable {
             SynchedEntityData.defineId(VehicleEntity.class, EntityDataSerializers.FLOAT);
     private static final EntityDataAccessor<Float> DATA_DRIVER_SEAT_Z =
             SynchedEntityData.defineId(VehicleEntity.class, EntityDataSerializers.FLOAT);
+    private static final EntityDataAccessor<Boolean> DATA_MANUAL_GEAR_CONTROL =
+            SynchedEntityData.defineId(VehicleEntity.class, EntityDataSerializers.BOOLEAN);
+    private static final EntityDataAccessor<Float> DATA_MAX_FUEL =
+            SynchedEntityData.defineId(VehicleEntity.class, EntityDataSerializers.FLOAT);
+    private static final EntityDataAccessor<Integer> DATA_TEMP_MANUAL_TICKS =
+            SynchedEntityData.defineId(VehicleEntity.class, EntityDataSerializers.INT);
+    private static final EntityDataAccessor<Integer> DATA_SHIFT_RECOVERY_TICKS =
+            SynchedEntityData.defineId(VehicleEntity.class, EntityDataSerializers.INT);
+    private static final EntityDataAccessor<Integer> DATA_SHIFT_RECOVERY_GEAR =
+            SynchedEntityData.defineId(VehicleEntity.class, EntityDataSerializers.INT);
 
     private VehicleType vehicleType;
     private double speed, maxSpeed = 1.0, steeringAngle;
     private double fuel = 100.0, maxFuel = 100.0;
     private int gear = 1; // 默认 1 挡（非空挡）
     private boolean accelerating, braking, steeringLeft, steeringRight, handbrake;
+    private boolean manualGearControl;
+    private int temporaryManualTicks;
+    private int shiftRecoveryTicks;
+    private int shiftRecoveryGear = 1;
 
     // ── 新增物理状态 ──
     private Wheel[] wheels;
@@ -116,6 +130,11 @@ public class VehicleEntity extends Entity implements IVehicleDriveable {
         this.entityData.define(DATA_DRIVER_SEAT_X, (float) SeatConfig.DEFAULT_DRIVER.x());
         this.entityData.define(DATA_DRIVER_SEAT_Y, (float) SeatConfig.DEFAULT_DRIVER.y());
         this.entityData.define(DATA_DRIVER_SEAT_Z, (float) SeatConfig.DEFAULT_DRIVER.z());
+        this.entityData.define(DATA_MANUAL_GEAR_CONTROL, false);
+        this.entityData.define(DATA_MAX_FUEL, 100.0f);
+        this.entityData.define(DATA_TEMP_MANUAL_TICKS, 0);
+        this.entityData.define(DATA_SHIFT_RECOVERY_TICKS, 0);
+        this.entityData.define(DATA_SHIFT_RECOVERY_GEAR, 1);
     }
 
     // ── 车轮初始化 ──
@@ -152,6 +171,7 @@ public class VehicleEntity extends Entity implements IVehicleDriveable {
         this.gear = tag.contains("Gear") ? tag.getInt("Gear") : 1;
         this.steeringAngle = tag.getDouble("SteeringAngle");
         this.engineRPM = tag.contains("EngineRPM") ? tag.getDouble("EngineRPM") : 800;
+        this.manualGearControl = tag.getBoolean("ManualGearControl");
         this.yawRate = tag.getDouble("YawRate");
         this.bodyPitch = tag.getDouble("BodyPitch");
         this.bodyRoll = tag.getDouble("BodyRoll");
@@ -162,6 +182,7 @@ public class VehicleEntity extends Entity implements IVehicleDriveable {
         if (tag.contains("DriverSeatZ")) entityData.set(DATA_DRIVER_SEAT_Z, tag.getFloat("DriverSeatZ"));
         String typeKey = tag.getString("VehicleType");
         if (!typeKey.isEmpty()) entityData.set(DATA_VEHICLE_TYPE, typeKey);
+        entityData.set(DATA_MANUAL_GEAR_CONTROL, manualGearControl);
     }
 
     @Override
@@ -171,6 +192,7 @@ public class VehicleEntity extends Entity implements IVehicleDriveable {
         tag.putInt("Gear", gear);
         tag.putDouble("SteeringAngle", steeringAngle);
         tag.putDouble("EngineRPM", engineRPM);
+        tag.putBoolean("ManualGearControl", manualGearControl);
         tag.putDouble("YawRate", yawRate);
         tag.putDouble("BodyPitch", bodyPitch);
         tag.putDouble("BodyRoll", bodyRoll);
@@ -196,6 +218,8 @@ public class VehicleEntity extends Entity implements IVehicleDriveable {
         if (level().isClientSide) {
             updateClientVisualState();
         } else {
+            updateTransmissionTimers();
+
             // ── 重力（每 tick）──
             if (!isNoGravity()) {
                 this.setDeltaMovement(this.getDeltaMovement().add(0.0, -0.08, 0.0));
@@ -229,6 +253,11 @@ public class VehicleEntity extends Entity implements IVehicleDriveable {
             entityData.set(DATA_BODY_PITCH, (float) bodyPitch);
             entityData.set(DATA_BODY_ROLL, (float) bodyRoll);
             entityData.set(DATA_STEERING_ANGLE, (float) steeringAngle);
+            entityData.set(DATA_MANUAL_GEAR_CONTROL, manualGearControl);
+            entityData.set(DATA_MAX_FUEL, (float) maxFuel);
+            entityData.set(DATA_TEMP_MANUAL_TICKS, temporaryManualTicks);
+            entityData.set(DATA_SHIFT_RECOVERY_TICKS, shiftRecoveryTicks);
+            entityData.set(DATA_SHIFT_RECOVERY_GEAR, shiftRecoveryGear);
         }
     }
 
@@ -249,6 +278,27 @@ public class VehicleEntity extends Entity implements IVehicleDriveable {
         gear = entityData.get(DATA_GEAR);
         engineRPM = entityData.get(DATA_ENGINE_RPM);
         steeringAngle = entityData.get(DATA_STEERING_ANGLE);
+        manualGearControl = entityData.get(DATA_MANUAL_GEAR_CONTROL);
+        maxFuel = entityData.get(DATA_MAX_FUEL);
+        temporaryManualTicks = entityData.get(DATA_TEMP_MANUAL_TICKS);
+        shiftRecoveryTicks = entityData.get(DATA_SHIFT_RECOVERY_TICKS);
+        shiftRecoveryGear = entityData.get(DATA_SHIFT_RECOVERY_GEAR);
+    }
+
+    private void updateTransmissionTimers() {
+        if (temporaryManualTicks > 0) {
+            temporaryManualTicks--;
+        }
+
+        if (shiftRecoveryTicks > 0) {
+            shiftRecoveryTicks--;
+            if (shiftRecoveryTicks == 0 && !manualGearControl) {
+                shiftRecoveryGear = findBestAutomaticGear();
+                setGear(shiftRecoveryGear);
+                // 避免恢复挡位后在同一 tick 又被自动换挡逻辑覆盖。
+                temporaryManualTicks = 1;
+            }
+        }
     }
 
     private void updateClientVisualYaw() {
@@ -316,19 +366,124 @@ public class VehicleEntity extends Entity implements IVehicleDriveable {
 
     @Override
     public Player getDriver() {
-        Entity c = getControllingPassenger();
-        return c instanceof Player ? (Player) c : null;
+        if (getPassengers().isEmpty()) return null;
+        Entity passenger = getPassengers().get(0);
+        return passenger instanceof Player player ? player : null;
     }
 
     @Override
     public void shiftGear(boolean up) {
         if (up && gear < 6) gear++;
         else if (!up && gear > -1) gear--;
+        entityData.set(DATA_GEAR, gear);
     }
 
     @Override
     public void setGear(int g) {
         this.gear = Math.max(-1, Math.min(g, 6));
+        entityData.set(DATA_GEAR, gear);
+    }
+
+    /**
+     * 手动挡位顺序：R(-1) → N(0) → 1..6。
+     * 明显前进时禁止挂倒挡，明显倒车时禁止直接挂前进挡。
+     */
+    public boolean requestManualGearShift(boolean up) {
+        int targetGear = Math.max(-1, Math.min(gear + (up ? 1 : -1), 6));
+        if (targetGear == gear) return false;
+        if (targetGear == -1 && getSpeed() > 0.05) return false;
+        if (targetGear > 0 && getSpeed() < -0.05) return false;
+
+        if (manualGearControl) {
+            setGear(targetGear);
+            return true;
+        }
+
+        double predictedRpm = calculatePredictedRpm(targetGear);
+        setGear(targetGear);
+        if (targetGear <= 0 || predictedRpm <= 7000.0) {
+            temporaryManualTicks = 100;
+            shiftRecoveryTicks = 0;
+        } else {
+            // 超转降挡：保留玩家请求的挡位 1 秒，并立即制造明显顿挫。
+            setSpeed(getSpeed() * 0.7);
+            Vec3 motion = getDeltaMovement();
+            setDeltaMovement(motion.x * 0.7, motion.y, motion.z * 0.7);
+            temporaryManualTicks = 0;
+            shiftRecoveryTicks = 20;
+            shiftRecoveryGear = findBestAutomaticGear();
+        }
+        return true;
+    }
+
+    public boolean isManualGearControl() {
+        return manualGearControl;
+    }
+
+    public boolean toggleTransmissionMode() {
+        manualGearControl = !manualGearControl;
+        temporaryManualTicks = 0;
+        shiftRecoveryTicks = 0;
+        if (!manualGearControl) {
+            shiftRecoveryGear = findBestAutomaticGear();
+            setGear(shiftRecoveryGear);
+        }
+        entityData.set(DATA_MANUAL_GEAR_CONTROL, manualGearControl);
+        return manualGearControl;
+    }
+
+    public boolean isAutomaticShiftAvailable() {
+        return !manualGearControl
+                && temporaryManualTicks <= 0
+                && shiftRecoveryTicks <= 0;
+    }
+
+    public int getTemporaryManualTicks() {
+        return temporaryManualTicks;
+    }
+
+    public int getShiftRecoveryTicks() {
+        return shiftRecoveryTicks;
+    }
+
+    private double calculatePredictedRpm(int targetGear) {
+        if (targetGear == 0) return 800.0;
+        VehicleType type = vehicleType != null ? vehicleType : VehicleType.DEFAULT;
+        // getSpeed() 为 blocks/tick；乘 20 转换为 blocks/second。
+        double wheelAngularVelocity = Math.abs(getSpeed()) * 20.0 / 0.4;
+        return wheelAngularVelocity
+                * Math.abs(type.getGearRatio(targetGear))
+                * type.getEffectiveFinalDriveRatio()
+                * (60.0 / (2.0 * Math.PI));
+    }
+
+    public int findBestAutomaticGear() {
+        if (getSpeed() < -0.035) return -1;
+
+        double speedAbs = Math.abs(getSpeed());
+        if (speedAbs < 0.035) return 1;
+
+        int bestGear = 6;
+        double bestDifference = Double.MAX_VALUE;
+        for (int candidate = 1; candidate <= 6; candidate++) {
+            double rpm = calculatePredictedRpm(candidate);
+            if (rpm > 7000.0) continue;
+
+            double difference = Math.abs(rpm - 3500.0);
+            if (difference < bestDifference) {
+                bestDifference = difference;
+                bestGear = candidate;
+            }
+        }
+        return bestGear;
+    }
+
+    public String getGearDisplayName() {
+        return switch (gear) {
+            case -1 -> "R";
+            case 0 -> "N";
+            default -> Integer.toString(gear);
+        };
     }
 
     // ── 新增物理接口 ──
@@ -401,6 +556,7 @@ public class VehicleEntity extends Entity implements IVehicleDriveable {
             maxSpeed = type.maxSpeed();
             maxFuel = type.fuelCapacity();
             fuel = maxFuel;
+            entityData.set(DATA_MAX_FUEL, (float) maxFuel);
             vehicleWeight = type.weight();
             wheelsInitialized = false;
             // 同步 OBJ 渲染参数到客户端
@@ -519,7 +675,7 @@ public class VehicleEntity extends Entity implements IVehicleDriveable {
             }
 
             // ── 驾驶：右键骑乘 ──
-            if (getControllingPassenger() == null) {
+            if (getDriver() == null) {
                 player.startRiding(this);
             } else if (!getPassengers().contains(player)) {
                 player.startRiding(this);
