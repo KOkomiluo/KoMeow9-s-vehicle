@@ -14,6 +14,8 @@ java.toolchain.languageVersion = JavaLanguageVersion.of(java_version.toInteger()
 
 // ─── Legacy Forge (NeoForge 1.20.1) Configuration ────────────────────────────
 legacyForge {
+    accessTransformers.from(file('src/main/resources/META-INF/accesstransformer.cfg'))
+
     // 版本格式：MC版本-Forge版本（NeoForge 1.20.1 基于 Forge 47.x）
     version = project.minecraft_version + '-' + project.forge_version
 
