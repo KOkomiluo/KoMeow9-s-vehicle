@@ -10,7 +10,7 @@ package com.yourname.vehicleframework.data;
  * <p>
  * 模型渲染方式：
  * - 若 objModelPath 非空 → 使用 OBJ 模型渲染器（从 assets/models/obj/ 加载 .obj）
- * - 若 objModelPath 为空 → 使用 GeckoLib 骨骼动画渲染器
+ * - objModelPath points to the OBJ asset used by the renderer
  * <p>
  * <b>物理参数</b>（新增字段，均有合理默认值）：
  * <ul>
@@ -42,9 +42,7 @@ public record VehicleType(
         double handling,
         double fuelCapacity,
         int    seatCount,
-        String modelPath,
         String texturePath,
-        String animationPath,
         double weight,
         String hornSound,
         String objModelPath,
@@ -92,12 +90,12 @@ public record VehicleType(
              0.7    // 6 挡
     };
 
-    /** 默认车辆类型（回退用，使用 GeckoLib 渲染）。 */
+    /** Default fallback vehicle type. */
     public static final VehicleType DEFAULT = new VehicleType(
             "sports_car", "Sports Car",
             1.0, 0.015, 0.04, 1.0,
             100.0, 2,
-            "vehicle", "sports_car", "vehicle",
+            "sports_car",
             1500.0, "vehicleframework:horn.default",
             "", 0.0625,
             new SeatConfig[]{SeatConfig.DEFAULT_DRIVER},
@@ -123,7 +121,7 @@ public record VehicleType(
             110.0  // bodyRollStrength
     );
 
-    /** 是否使用 OBJ 模型渲染（而非 GeckoLib）。 */
+    /** Returns true when this vehicle has an OBJ model path configured. */
     public boolean useObjModel() {
         return objModelPath != null && !objModelPath.isEmpty();
     }

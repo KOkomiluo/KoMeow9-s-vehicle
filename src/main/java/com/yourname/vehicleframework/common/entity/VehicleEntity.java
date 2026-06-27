@@ -78,6 +78,7 @@ public class VehicleEntity extends Entity implements IVehicleDriveable {
     private int temporaryManualTicks;
     private int shiftRecoveryTicks;
     private int shiftRecoveryGear = 1;
+    private int terrainLaunchCooldown;
 
     // ── 新增物理状态 ──
     private Wheel[] wheels;
@@ -449,6 +450,14 @@ public class VehicleEntity extends Entity implements IVehicleDriveable {
 
     public int getShiftRecoveryTicks() {
         return shiftRecoveryTicks;
+    }
+
+    public int getTerrainLaunchCooldown() {
+        return terrainLaunchCooldown;
+    }
+
+    public void setTerrainLaunchCooldown(int ticks) {
+        terrainLaunchCooldown = Math.max(0, ticks);
     }
 
     private double calculatePredictedRpm(int targetGear) {

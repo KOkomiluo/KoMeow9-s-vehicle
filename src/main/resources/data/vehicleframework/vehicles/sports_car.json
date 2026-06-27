@@ -7,9 +7,7 @@
   "handling": 1.2,
   "fuelCapacity": 120.0,
   "seatCount": 2,
-  "modelPath": "vehicle",
   "texturePath": "civic2008",
-  "animationPath": "vehicle",
   "weight": 1200.0,
   "hornSound": "vehicleframework:horn.sports",
 

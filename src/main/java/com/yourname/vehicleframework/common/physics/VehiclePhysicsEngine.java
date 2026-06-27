@@ -29,10 +29,16 @@ public final class VehiclePhysicsEngine {
     private static final double DOWNSHIFT_RPM = 1800.0;
     private static final double FUEL_BASE_CONSUMPTION = 0.008;
     private static final double FUEL_ACCEL_FACTOR = 0.015;
+    private static final double FUEL_CONSUMPTION_SCALE = 1.0 / 6.0;
     private static final double LOW_SPEED_BLEND_START = 0.05;
     private static final double LOW_SPEED_BLEND_END = 0.24;
     private static final double REVERSE_STEER_SPEED_THRESHOLD = -0.01;
     private static final int TRACTION_LOG_INTERVAL_TICKS = 100;
+    private static final float HALF_BLOCK_STEP_HEIGHT = 0.65f;
+    private static final double TERRAIN_LAUNCH_SPEED_THRESHOLD = 0.55;
+    private static final double TERRAIN_LAUNCH_MIN_STEP = 0.08;
+    private static final double TERRAIN_LAUNCH_MAX_STEP = 0.55;
+    private static final int TERRAIN_LAUNCH_COOLDOWN_TICKS = 8;
     private static final double[] FORWARD_GEAR_SPEED_FACTORS = {
             0.0, 0.30, 0.45, 0.60, 0.75, 0.88, 1.0
     };
@@ -366,21 +372,44 @@ public final class VehiclePhysicsEngine {
     }
 
     private static void applyMovement(VehicleEntity vehicle, int groundedWheels) {
-        boolean allowFullBlockStep = groundedWheels >= 2
-                && Math.abs(vehicle.getSpeed()) < 0.52
+        if (vehicle.getTerrainLaunchCooldown() > 0) {
+            vehicle.setTerrainLaunchCooldown(vehicle.getTerrainLaunchCooldown() - 1);
+        }
+
+        Vec3 requestedMovement = vehicle.getDeltaMovement();
+        double horizontalSpeed = Math.sqrt(
+                requestedMovement.x * requestedMovement.x
+                        + requestedMovement.z * requestedMovement.z);
+        boolean allowHalfBlockStep = groundedWheels >= 2
                 && Math.abs(vehicle.getBodyPitch()) < 11.0
-                && vehicle.getDeltaMovement().y < 0.18;
-        vehicle.setMaxUpStep(allowFullBlockStep ? 1.05f : 0.25f);
+                && requestedMovement.y < 0.18;
+        vehicle.setMaxUpStep(allowHalfBlockStep ? HALF_BLOCK_STEP_HEIGHT : 0.25f);
 
         Vec3 before = vehicle.position();
-        vehicle.move(MoverType.SELF, vehicle.getDeltaMovement());
+        vehicle.move(MoverType.SELF, requestedMovement);
         Vec3 actualMovement = vehicle.position().subtract(before);
+        double verticalMotion = actualMovement.y;
+
+        boolean steppedUp = allowHalfBlockStep
+                && actualMovement.y > TERRAIN_LAUNCH_MIN_STEP
+                && actualMovement.y <= TERRAIN_LAUNCH_MAX_STEP;
+        if (steppedUp
+                && horizontalSpeed > TERRAIN_LAUNCH_SPEED_THRESHOLD
+                && vehicle.getTerrainLaunchCooldown() <= 0) {
+            double launch = 0.10
+                    + (horizontalSpeed - TERRAIN_LAUNCH_SPEED_THRESHOLD) * 0.05
+                    + Math.min(actualMovement.y, 0.5) * 0.06;
+            verticalMotion = clamp(launch, 0.10, 0.18);
+            vehicle.setTerrainLaunchCooldown(TERRAIN_LAUNCH_COOLDOWN_TICKS);
+        } else if (steppedUp) {
+            verticalMotion = Math.min(requestedMovement.y, 0.03);
+        }
 
         if (vehicle.horizontalCollision) {
             vehicle.setYawRate(vehicle.getYawRate() * 0.45);
             vehicle.setSpeed(vehicle.getSpeed() * 0.55);
         }
-        vehicle.setDeltaMovement(actualMovement);
+        vehicle.setDeltaMovement(actualMovement.x, verticalMotion, actualMovement.z);
     }
 
     private static void updateEngineRPM(VehicleEntity vehicle, VehicleType type) {
@@ -467,7 +496,7 @@ public final class VehiclePhysicsEngine {
                     * Math.max(0.2, Math.abs(vehicle.getSpeed()))
                     * rpmFactor;
         }
-        vehicle.setFuel(vehicle.getFuel() - consumption);
+        vehicle.setFuel(vehicle.getFuel() - consumption * FUEL_CONSUMPTION_SCALE);
     }
 
     private static void updateWheelSlipState(

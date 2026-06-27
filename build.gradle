@@ -71,7 +71,7 @@ repositories {
 
 // ─── Dependencies ─────────────────────────────────────────────────────────────
 dependencies {
-    // OBJ 模型直接用 SmartVehicleRenderer，无需 GeckoLib
+    // OBJ models are rendered directly by the vehicle renderer.
 }
 
 // ─── Misc ─────────────────────────────────────────────────────────────────────
